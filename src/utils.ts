@@ -37,6 +37,11 @@ function getImageExtensions() {
 	return imageExtensions;
 }
 
+export function getMediaType(ext: string): "image" | "video" {
+	const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv'];
+	return videoExtensions.includes(ext.toLowerCase()) ? 'video' : 'image';
+}
+
 export function getGlob() {
 	const imgExtensions = getImageExtensions();
 	const upperCaseImg = imgExtensions.map(ext => ext.toUpperCase());
@@ -96,14 +101,16 @@ export async function getFolders(imgUris: vscode.Uri[], action: "create" | "chan
 			const fileStat = fileStats[imgUri.fsPath as keyof typeof fileStats];
 			const dotIndex = imgUri.fsPath.lastIndexOf('.');
 			const imageId = hash256(imgUri.path);
+			const ext = imgUri.fsPath.slice(dotIndex + 1).toUpperCase();
 			folders[folderId].images[imageId] = {
 				id: imageId,
 				uri: imgUri,
-				ext: imgUri.fsPath.slice(dotIndex + 1).toUpperCase(),
+				ext: ext,
 				size: fileStat['size'],
 				mtime: fileStat['mtime'],
 				ctime: fileStat['ctime'],
 				status: "",
+				type: getMediaType(ext),
 			};
 		}
 	}

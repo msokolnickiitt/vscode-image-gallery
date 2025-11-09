@@ -75,6 +75,14 @@ button.codicon+.tooltip-text {
 	object-fit: scale-down;
 }
 
+.image.video {
+	cursor: pointer;
+}
+
+video.image {
+	background-color: black;
+}
+
 .lazy {
 	opacity: 0.1;
 	will-change: opacity;

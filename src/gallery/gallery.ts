@@ -44,8 +44,8 @@ class GalleryWebview {
 
 	private async getImageUris(galleryFolder?: vscode.Uri | string) {
 		/**
-		 * Recursively get the URIs of all the images within the folder.
-		 * 
+		 * Recursively get the URIs of all the images and videos within the folder.
+		 *
 		 * @param galleryFolder The folder to search. If not provided, the
 		 * workspace folder will be used.
 		 */
@@ -61,7 +61,7 @@ class GalleryWebview {
 		vscode.commands.executeCommand('setContext', 'ext.viewType', 'gryc.gallery');
 		const panel = vscode.window.createWebviewPanel(
 			'gryc.gallery',
-			`Image Gallery${galleryFolder ? ': ' + utils.getFilename(galleryFolder.path) : ''}`,
+			`Image & Video Gallery${galleryFolder ? ': ' + utils.getFilename(galleryFolder.path) : ''}`,
 			vscode.ViewColumn.One,
 			{
 				enableScripts: true,
@@ -90,7 +90,7 @@ class GalleryWebview {
 	public messageListener(message: Record<string, any>, webview: vscode.Webview) {
 		const telemetryPrefix = "gallery.messageListener";
 		switch (message.command) {
-			case "POST.gallery.openImageViewer":
+			case "POST.gallery.openMediaViewer":
 				vscode.commands.executeCommand(
 					'vscode.open',
 					vscode.Uri.file(message.path),
@@ -100,7 +100,7 @@ class GalleryWebview {
 						viewColumn: vscode.ViewColumn.Two,
 					},
 				);
-				reporter.sendTelemetryEvent(`${telemetryPrefix}.openImageViewer`, {
+				reporter.sendTelemetryEvent(`${telemetryPrefix}.openMediaViewer`, {
 					'preview': message.preview.toString(),
 				});
 				break;
