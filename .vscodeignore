@@ -4,6 +4,8 @@
 out/**
 src/test/**
 node_modules/**
+!node_modules/@pqina/pintura/pintura.js
+!node_modules/@pqina/pintura/pintura.css
 src/**/*.ts
 .gitignore
 .yarnrc

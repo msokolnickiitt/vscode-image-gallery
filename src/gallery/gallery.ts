@@ -111,6 +111,16 @@ class GalleryWebview {
 				reporter.sendTelemetryEvent(`${telemetryPrefix}.copyPath`);
 				break;
 
+			case "POST.gallery.openImageEditor":
+				vscode.commands.executeCommand(
+					'vscode.openWith',
+					vscode.Uri.file(message.path),
+					'gryc.editor',
+					vscode.ViewColumn.Two
+				);
+				reporter.sendTelemetryEvent(`${telemetryPrefix}.openImageEditor`);
+				break;
+
 			case "POST.gallery.requestSort":
 				this.gFolders = this.customSorter.sort(this.gFolders, message.valueName, message.ascending);
 				reporter.sendTelemetryEvent(`${telemetryPrefix}.requestSort`, {

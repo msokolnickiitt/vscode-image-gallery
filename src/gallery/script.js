@@ -25,6 +25,7 @@ function createContextMenu() {
 	contextMenu.id = 'context-menu';
 	contextMenu.className = 'context-menu';
 	contextMenu.innerHTML = `
+		<div class="context-menu-item" data-action="edit-image">Edit Image</div>
 		<div class="context-menu-item" data-action="copy-path">Copy Path</div>
 	`;
 	document.body.appendChild(contextMenu);
@@ -365,6 +366,14 @@ class EventListener {
 		const newMenu = contextMenu.cloneNode(true);
 		contextMenu.parentNode.replaceChild(newMenu, contextMenu);
 
+		// Add click handler for "Edit Image" item
+		const editImageItem = newMenu.querySelector('[data-action="edit-image"]');
+		editImageItem.addEventListener("click", (event) => {
+			event.stopPropagation();
+			EventListener.openImageEditor(path);
+			EventListener.hideContextMenu();
+		});
+
 		// Add click handler for "Copy Path" item
 		const copyPathItem = newMenu.querySelector('[data-action="copy-path"]');
 		copyPathItem.addEventListener("click", (event) => {
@@ -384,6 +393,13 @@ class EventListener {
 	static copyPath(path) {
 		vscode.postMessage({
 			command: "POST.gallery.copyPath",
+			path: path,
+		});
+	}
+
+	static openImageEditor(path) {
+		vscode.postMessage({
+			command: "POST.gallery.openImageEditor",
 			path: path,
 		});
 	}
