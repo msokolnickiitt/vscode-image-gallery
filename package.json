@@ -1,7 +1,7 @@
 {
 	"name": "vscode-image-gallery",
-	"displayName": "Image Gallery",
-	"description": "Improve image browsing experience, especially for remote development.",
+	"displayName": "Image & Video Gallery",
+	"description": "Improve image and video browsing experience, especially for remote development.",
 	"version": "1.2.1",
 	"publisher": "GeriYoco",
 	"repository": {
@@ -36,7 +36,7 @@
 	"main": "./dist/extension.js",
 	"contributes": {
 		"configuration": {
-			"title": "Image Gallery",
+			"title": "Image & Video Gallery",
 			"properties": {
 				"sorting.byPathOptions.localeMatcher": {
 					"type": "string",
@@ -78,12 +78,12 @@
 		},
 		"customEditors": [
 			{
-				"displayName": "Viewer (GeriYoco Image Gallery)",
+				"displayName": "Viewer (GeriYoco Image & Video Gallery)",
 				"viewType": "gryc.viewer",
 				"priority": "default",
 				"selector": [
 					{
-						"filenamePattern": "*.{jpg,jpe,jpeg,jif,jfif,jfi,png,bmp,gif,ico,webp,avif,svg}"
+						"filenamePattern": "*.{jpg,jpe,jpeg,jif,jfif,jfi,png,bmp,gif,ico,webp,avif,svg,mp4,webm,ogg,mov,avi,mkv,m4v,flv,wmv}"
 					}
 				]
 			}
@@ -91,8 +91,8 @@
 		"commands": [
 			{
 				"command": "gryc.openGallery",
-				"title": "Open Image Gallery (GeriYoco) 🖼️",
-				"category": "Image Gallery"
+				"title": "Open Image & Video Gallery (GeriYoco) 🖼️",
+				"category": "Image & Video Gallery"
 			}
 		],
 		"menus": {

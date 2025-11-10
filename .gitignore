@@ -4,3 +4,5 @@
 src/test/samples/env/
 src/test/samples/folder*
 .vscode-test-web/
+/.idea/
+/vscode-image-gallery-1.2.1.vsix

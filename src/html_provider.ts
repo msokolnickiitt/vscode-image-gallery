@@ -43,6 +43,7 @@ export default class HTMLProvider {
 			`script-src 'nonce-${utils.nonce}';`,
 			`font-src ${this.webview.cspSource};`,
 			`img-src ${this.webview.cspSource} https:;`,
+			`media-src ${this.webview.cspSource};`,
 			`style-src ${this.webview.cspSource};`,
 		].join(' ');
 		return `
@@ -132,10 +133,21 @@ export default class HTMLProvider {
 			size: image.size,
 			mtime: image.mtime,
 			ctime: image.ctime,
+			type: image.type,
 		};
-		return `
-		<div class="image-container tooltip">
-			<span id="${image.id}-tooltip" class="tooltip tooltip-text"></span>
+
+		const mediaElement = image.type === 'video' ? `
+			<video
+				id="${image.id}"
+				data-src="${this.webview.asWebviewUri(image.uri)}"
+				data-path="${image.uri.path}"
+				data-meta='${JSON.stringify(metadata)}'
+				class="image video unloaded"
+				muted
+				loop
+				playsinline
+			></video>
+		` : `
 			<img
 				id="${image.id}"
 				src="${this.placeholderUri}"
@@ -144,6 +156,12 @@ export default class HTMLProvider {
 				data-meta='${JSON.stringify(metadata)}'
 				class="image unloaded"
 			>
+		`;
+
+		return `
+		<div class="image-container tooltip">
+			<span id="${image.id}-tooltip" class="tooltip tooltip-text"></span>
+			${mediaElement}
 			<div id="${image.id}-filename" class="filename">${utils.getFilename(image.uri.path)}</div>
 		</div>
 		`.trim();

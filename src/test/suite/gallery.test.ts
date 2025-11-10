@@ -18,6 +18,7 @@ class TestObjects {
 				mtime: 1000,
 				ctime: 1000,
 				status: "",
+				type: "image",
 			},
 			"image2": {
 				id: "fold1_img2",
@@ -27,6 +28,7 @@ class TestObjects {
 				mtime: 800,
 				ctime: 1200,
 				status: "",
+				type: "image",
 			},
 		}
 	};
@@ -43,6 +45,7 @@ class TestObjects {
 				mtime: 1500,
 				ctime: 1100,
 				status: "",
+				type: "image",
 			},
 		}
 	};

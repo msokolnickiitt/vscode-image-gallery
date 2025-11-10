@@ -37,10 +37,15 @@ const imageObserver = new IntersectionObserver(
 	(entries, _observer) => {
 		entries.forEach(entry => {
 			if (entry.isIntersecting) {
-				const image = entry.target;
-				imageObserver.unobserve(image);
-				image.src = image.dataset.src;
-				image.onload = () => image.classList.replace("unloaded", "loaded");
+				const media = entry.target;
+				imageObserver.unobserve(media);
+				media.src = media.dataset.src;
+
+				if (media.tagName === 'VIDEO') {
+					media.onloadeddata = () => media.classList.replace("unloaded", "loaded");
+				} else {
+					media.onload = () => media.classList.replace("unloaded", "loaded");
+				}
 			}
 		});
 	}
@@ -121,8 +126,8 @@ class DOMManager {
 
 			// update counts
 			const countText = (object, count) => `${count} ${object}${count === 1 ? "" : "s"} found`;
-			const nImages = Object.keys(content[folderId].images).length;
-			content[folderId].bar.querySelector(`#${folderId}-items-count`).textContent = countText("image", nImages);
+			const nItems = Object.keys(content[folderId].images).length;
+			content[folderId].bar.querySelector(`#${folderId}-items-count`).textContent = countText("item", nItems);
 			const nFolders = Object.keys(content).length;
 			document.querySelector('.toolbar .folder-count').textContent = countText("folder", nFolders);
 		}
@@ -141,7 +146,7 @@ class DOMManager {
 			})
 		);
 		if (content.childElementCount === 0) {
-			content.innerHTML = "<p>No image found in this folder.</p>";
+			content.innerHTML = "<p>No media found in this folder.</p>";
 		}
 	}
 }
@@ -173,43 +178,52 @@ class EventListener {
 
 	static addToImageContainer(imageContainer) {
 		for (const child of imageContainer.childNodes) {
-			if (child.nodeName !== "IMG") { continue; }
-			const image = child;
+			if (child.nodeName !== "IMG" && child.nodeName !== "VIDEO") { continue; }
+			const media = child;
+			const isVideo = media.tagName === "VIDEO";
 
 			imageContainer.addEventListener("click", () => {
-				EventListener.openImageViewer(image.dataset.path, true);
+				EventListener.openMediaViewer(media.dataset.path, true);
 			});
 			imageContainer.addEventListener("dblclick", () => {
-				EventListener.openImageViewer(image.dataset.path, false);
+				EventListener.openMediaViewer(media.dataset.path, false);
 			});
 			imageContainer.addEventListener("mouseover", () => {
-				const tooltip = image.previousElementSibling;
+				const tooltip = media.previousElementSibling;
 				if (!tooltip.classList.contains("tooltip")) {
 					throw new Error("DOM element is not of class tooltip");
 				}
-				EventListener.showImageMetadata(tooltip, image.dataset.meta);
+				EventListener.showMediaMetadata(tooltip, media.dataset.meta, media);
+
+				// Auto-play video on hover
+				if (isVideo && media.paused) {
+					media.play().catch(() => {});
+				}
 			});
 			imageContainer.addEventListener("mouseout", () => {
-				image.previousElementSibling.textContent = "";
+				media.previousElementSibling.textContent = "";
+
+				// Pause video when not hovering
+				if (isVideo && !media.paused) {
+					media.pause();
+				}
 			});
 
-			if (image.classList.contains("unloaded")) {
-				imageObserver.observe(image);
+			if (media.classList.contains("unloaded")) {
+				imageObserver.observe(media);
 			}
 		}
 	}
 
-	static openImageViewer(path, preview) {
+	static openMediaViewer(path, preview) {
 		vscode.postMessage({
-			command: "POST.gallery.openImageViewer",
+			command: "POST.gallery.openMediaViewer",
 			path: path,
 			preview: preview,
 		});
 	}
 
-	static showImageMetadata(tooltipDOM, metadata) {
-		const image = tooltipDOM.nextElementSibling;
-
+	static showMediaMetadata(tooltipDOM, metadata, mediaElement) {
 		const data = JSON.parse(metadata);
 
 		const pow = Math.floor(Math.log(data.size) / Math.log(1024));
@@ -227,13 +241,29 @@ class EventListener {
 		const ctimeStr = new Date(data.ctime).toLocaleString("en-US", dateOptions);
 		const mtimeStr = new Date(data.mtime).toLocaleString("en-US", dateOptions);
 
-		tooltipDOM.textContent = [
-			`Dimensions: ${image.naturalWidth} x ${image.naturalHeight}`,
-			`Type: ${data.ext}`,
-			`Size: ${sizeStr}`,
-			`Modified: ${mtimeStr}`,
-			`Created: ${ctimeStr}`,
-		].join("\n");
+		const isVideo = mediaElement.tagName === "VIDEO";
+		const lines = [];
+
+		if (isVideo) {
+			if (mediaElement.videoWidth && mediaElement.videoHeight) {
+				lines.push(`Dimensions: ${mediaElement.videoWidth} x ${mediaElement.videoHeight}`);
+			}
+			if (mediaElement.duration && !isNaN(mediaElement.duration)) {
+				const duration = Math.round(mediaElement.duration);
+				const minutes = Math.floor(duration / 60);
+				const seconds = duration % 60;
+				lines.push(`Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+			}
+		} else {
+			lines.push(`Dimensions: ${mediaElement.naturalWidth} x ${mediaElement.naturalHeight}`);
+		}
+
+		lines.push(`Type: ${data.ext}`);
+		lines.push(`Size: ${sizeStr}`);
+		lines.push(`Modified: ${mtimeStr}`);
+		lines.push(`Created: ${ctimeStr}`);
+
+		tooltipDOM.textContent = lines.join("\n");
 	}
 
 	static getFolderAssociatedElements(folderDOM) {

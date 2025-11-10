@@ -41,21 +41,31 @@ export class ViewerWebview implements vscode.CustomReadonlyEditorProvider {
 		webviewPanel: vscode.WebviewPanel,
 	): Promise<void> {
 		let documentPath = webviewPanel.webview.asWebviewUri(document.uri).toString();
+		const fileExtension = document.uri.path.split('.').pop()?.toLowerCase() || '';
+		const mediaType = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv'].includes(fileExtension) ? 'video' : 'image';
+
 		webviewPanel.webview.options = {
 			enableScripts: true,
 			enableForms: false
 		};
-		webviewPanel.webview.html = getWebviewContent(this.context, webviewPanel.webview, documentPath);
+		webviewPanel.webview.html = getWebviewContent(this.context, webviewPanel.webview, documentPath, mediaType);
 	}
 }
 
 export function getWebviewContent(
 	context: vscode.ExtensionContext,
 	webview: vscode.Webview,
-	imgSrc: string,
+	mediaSrc: string,
+	mediaType: 'image' | 'video' = 'image',
 ) {
 	const styleHref = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, "src", 'viewer', 'style.css'));
 	const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, "src", 'viewer', 'script.js'));
+
+	const mediaElement = mediaType === 'video' ? `
+		<video id="media" src="${mediaSrc}" controls autoplay loop></video>
+	` : `
+		<img id="image" src="${mediaSrc}">
+	`;
 
 	return (
 		`<!DOCTYPE html>
@@ -63,17 +73,17 @@ export function getWebviewContent(
 		<head>
 			<meta charset="UTF-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<meta http-equiv="Content-Security-Policy" content="img-src ${webview.cspSource} https:; script-src 'nonce-${utils.nonce}'; style-src ${webview.cspSource};">
+			<meta http-equiv="Content-Security-Policy" content="img-src ${webview.cspSource} https:; media-src ${webview.cspSource}; script-src 'nonce-${utils.nonce}'; style-src ${webview.cspSource};">
 			<link href="${styleHref}" rel="stylesheet" />
 			<script nonce="${utils.nonce}" src='https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js'></script>
 
-			<title>Image Gallery: Viewer</title>
+			<title>Image & Video Gallery: Viewer</title>
 			</head>
 		<body>
 			<div id="container">
-				<img id="image" src="${imgSrc}">
+				${mediaElement}
 			</div>
-				
+
 			<script nonce="${utils.nonce}" src="${scriptUri}"></script>
 		</body>
 		</html>`
