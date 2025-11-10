@@ -15,8 +15,24 @@ let gFolders = {}; // a global holder for all content DOMs to preserve attribute
 
 function init() {
 	initMessageListeners();
+	createContextMenu();
 	DOMManager.requestContentDOMs();
 	EventListener.addAllToToolbar();
+}
+
+function createContextMenu() {
+	const contextMenu = document.createElement('div');
+	contextMenu.id = 'context-menu';
+	contextMenu.className = 'context-menu';
+	contextMenu.innerHTML = `
+		<div class="context-menu-item" data-action="copy-path">Copy Path</div>
+	`;
+	document.body.appendChild(contextMenu);
+
+	// Hide context menu when clicking elsewhere
+	document.addEventListener('click', () => {
+		EventListener.hideContextMenu();
+	});
 }
 
 function initMessageListeners() {
@@ -188,6 +204,10 @@ class EventListener {
 			imageContainer.addEventListener("dblclick", () => {
 				EventListener.openMediaViewer(media.dataset.path, false);
 			});
+			imageContainer.addEventListener("contextmenu", (event) => {
+				event.preventDefault();
+				EventListener.showContextMenu(event.clientX, event.clientY, media.dataset.path);
+			});
 			imageContainer.addEventListener("mouseover", () => {
 				const tooltip = media.previousElementSibling;
 				if (!tooltip.classList.contains("tooltip")) {
@@ -332,6 +352,39 @@ class EventListener {
 			command: "POST.gallery.requestSort",
 			valueName: dropdownDOM.value,
 			ascending: sortOrderDOM.src.includes("arrow-up.svg") ? true : false,
+		});
+	}
+
+	static showContextMenu(x, y, path) {
+		const contextMenu = document.getElementById("context-menu");
+		contextMenu.style.display = "block";
+		contextMenu.style.left = `${x}px`;
+		contextMenu.style.top = `${y}px`;
+
+		// Remove any existing event listeners
+		const newMenu = contextMenu.cloneNode(true);
+		contextMenu.parentNode.replaceChild(newMenu, contextMenu);
+
+		// Add click handler for "Copy Path" item
+		const copyPathItem = newMenu.querySelector('[data-action="copy-path"]');
+		copyPathItem.addEventListener("click", (event) => {
+			event.stopPropagation();
+			EventListener.copyPath(path);
+			EventListener.hideContextMenu();
+		});
+	}
+
+	static hideContextMenu() {
+		const contextMenu = document.getElementById("context-menu");
+		if (contextMenu) {
+			contextMenu.style.display = "none";
+		}
+	}
+
+	static copyPath(path) {
+		vscode.postMessage({
+			command: "POST.gallery.copyPath",
+			path: path,
 		});
 	}
 }

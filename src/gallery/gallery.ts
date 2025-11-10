@@ -105,6 +105,12 @@ class GalleryWebview {
 				});
 				break;
 
+			case "POST.gallery.copyPath":
+				vscode.env.clipboard.writeText(message.path);
+				vscode.window.showInformationMessage(`Path copied: ${message.path}`);
+				reporter.sendTelemetryEvent(`${telemetryPrefix}.copyPath`);
+				break;
+
 			case "POST.gallery.requestSort":
 				this.gFolders = this.customSorter.sort(this.gFolders, message.valueName, message.ascending);
 				reporter.sendTelemetryEvent(`${telemetryPrefix}.requestSort`, {
