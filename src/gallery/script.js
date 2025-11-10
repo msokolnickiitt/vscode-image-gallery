@@ -362,12 +362,18 @@ class EventListener {
 		contextMenu.style.left = `${x}px`;
 		contextMenu.style.top = `${y}px`;
 
+		// Determine if file is video or image
+		const ext = path.split('.').pop().toLowerCase();
+		const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv'];
+		const isVideo = videoExts.includes(ext);
+
 		// Remove any existing event listeners
 		const newMenu = contextMenu.cloneNode(true);
 		contextMenu.parentNode.replaceChild(newMenu, contextMenu);
 
-		// Add click handler for "Edit Image" item
+		// Add click handler for "Edit Image/Video" item
 		const editImageItem = newMenu.querySelector('[data-action="edit-image"]');
+		editImageItem.textContent = isVideo ? 'Edit Video' : 'Edit Image';
 		editImageItem.addEventListener("click", (event) => {
 			event.stopPropagation();
 			EventListener.openImageEditor(path);

@@ -6,6 +6,8 @@ src/test/**
 node_modules/**
 !node_modules/@pqina/pintura/pintura.js
 !node_modules/@pqina/pintura/pintura.css
+!node_modules/@pqina/pintura-video/pinturavideo.js
+!node_modules/@pqina/pintura-video/pinturavideo.css
 src/**/*.ts
 .gitignore
 .yarnrc

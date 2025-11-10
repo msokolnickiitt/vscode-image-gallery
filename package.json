@@ -78,12 +78,12 @@
 		},
 		"customEditors": [
 			{
-				"displayName": "Image Editor (GeriYoco Image & Video Gallery)",
+				"displayName": "Media Editor (GeriYoco Image & Video Gallery)",
 				"viewType": "gryc.editor",
 				"priority": "option",
 				"selector": [
 					{
-						"filenamePattern": "*.{jpg,jpe,jpeg,jif,jfif,jfi,png,bmp,gif,ico,webp,avif}"
+						"filenamePattern": "*.{jpg,jpe,jpeg,jif,jfif,jfi,png,bmp,gif,ico,webp,avif,mp4,webm,ogg,mov,avi,mkv,m4v,flv,wmv}"
 					}
 				]
 			},
@@ -151,6 +151,7 @@
 	},
 	"dependencies": {
 		"@pqina/pintura": "^8.95.2",
+		"@pqina/pintura-video": "^1.16.3",
 		"@vscode/extension-telemetry": "^0.6.2",
 		"panzoom": "^9.4.2"
 	}

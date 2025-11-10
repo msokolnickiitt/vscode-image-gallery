@@ -7,9 +7,9 @@ export let disposable: vscode.Disposable;
 export function activate(context: vscode.ExtensionContext) {
 	reporter.sendTelemetryEvent('editor.activate');
 
-	const editor = new ImageEditorProvider(context);
+	const editor = new MediaEditorProvider(context);
 	disposable = vscode.window.registerCustomEditorProvider(
-		ImageEditorProvider.viewType,
+		MediaEditorProvider.viewType,
 		editor,
 		{
 			webviewOptions: {
@@ -26,10 +26,10 @@ export function deactivate() {
 	reporter.sendTelemetryEvent('editor.deactivate');
 }
 
-class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> {
+class MediaEditorProvider implements vscode.CustomEditorProvider<MediaDocument> {
 	public static readonly viewType = 'gryc.editor';
 
-	private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<ImageDocument>>();
+	private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<MediaDocument>>();
 	public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
 	constructor(private readonly context: vscode.ExtensionContext) { }
@@ -38,12 +38,12 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 		uri: vscode.Uri,
 		openContext: vscode.CustomDocumentOpenContext,
 		token: vscode.CancellationToken
-	): Promise<ImageDocument> {
-		return new ImageDocument(uri);
+	): Promise<MediaDocument> {
+		return new MediaDocument(uri);
 	}
 
 	public async resolveCustomEditor(
-		document: ImageDocument,
+		document: MediaDocument,
 		webviewPanel: vscode.WebviewPanel,
 		token: vscode.CancellationToken
 	): Promise<void> {
@@ -105,7 +105,7 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 	}
 
 	public async saveCustomDocument(
-		document: ImageDocument,
+		document: MediaDocument,
 		cancellation: vscode.CancellationToken
 	): Promise<void> {
 		// Save is handled through message passing from webview
@@ -113,7 +113,7 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 	}
 
 	public async saveCustomDocumentAs(
-		document: ImageDocument,
+		document: MediaDocument,
 		destination: vscode.Uri,
 		cancellation: vscode.CancellationToken
 	): Promise<void> {
@@ -122,7 +122,7 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 	}
 
 	public async revertCustomDocument(
-		document: ImageDocument,
+		document: MediaDocument,
 		cancellation: vscode.CancellationToken
 	): Promise<void> {
 		vscode.window.showInformationMessage('Revert not yet implemented');
@@ -130,7 +130,7 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 	}
 
 	public async backupCustomDocument(
-		document: ImageDocument,
+		document: MediaDocument,
 		context: vscode.CustomDocumentBackupContext,
 		cancellation: vscode.CancellationToken
 	): Promise<vscode.CustomDocumentBackup> {
@@ -141,8 +141,13 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 		};
 	}
 
-	private getHtmlForWebview(webview: vscode.Webview, imageUri: vscode.Uri): string {
+	private getHtmlForWebview(webview: vscode.Webview, mediaUri: vscode.Uri): string {
 		const nonce = utils.nonce;
+
+		// Detect media type (image or video)
+		const ext = mediaUri.path.split('.').pop()?.toLowerCase() || '';
+		const mediaType = utils.getMediaType(ext);
+		const isVideo = mediaType === 'video';
 
 		// Determine the base URI for Pintura assets
 		let baseUri: vscode.Uri;
@@ -171,24 +176,44 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 		}
 
 		// Get Pintura resources
+		// Always load main Pintura module
 		const pinturaJS = webview.asWebviewUri(
 			vscode.Uri.joinPath(baseUri, 'node_modules/@pqina/pintura/pintura.js')
 		);
 
-		const pinturaCSS = webview.asWebviewUri(
-			vscode.Uri.joinPath(baseUri, 'node_modules/@pqina/pintura/pintura.css')
-		);
+		// For video: also load video extension module
+		const pinturaVideoJS = isVideo ? webview.asWebviewUri(
+			vscode.Uri.joinPath(baseUri, 'node_modules/@pqina/pintura-video/pinturavideo.js')
+		) : null;
 
-		const imageDataUri = webview.asWebviewUri(imageUri);
+		// CSS: always include base Pintura styles, add video plugin styles when needed
+		const pinturaCssUris = [
+			webview.asWebviewUri(
+				vscode.Uri.joinPath(baseUri, 'node_modules/@pqina/pintura/pintura.css')
+			)
+		];
+
+		let pinturaVideoCSS: vscode.Uri | null = null;
+		if (isVideo) {
+			pinturaVideoCSS = webview.asWebviewUri(
+				vscode.Uri.joinPath(baseUri, 'node_modules/@pqina/pintura-video/pinturavideo.css')
+			);
+			pinturaCssUris.push(pinturaVideoCSS);
+		}
+
+		const mediaDataUri = webview.asWebviewUri(mediaUri);
 
 		// Log URIs for debugging
 		console.log('🔍 Editor URI configuration:');
+		console.log('  mediaType:', mediaType);
+		console.log('  isVideo:', isVideo);
 		console.log('  extensionMode:', vscode.ExtensionMode[this.context.extensionMode]);
 		console.log('  extensionUri:', this.context.extensionUri.toString());
 		console.log('  baseUri:', baseUri.toString());
 		console.log('  pinturaJS:', pinturaJS.toString());
-		console.log('  pinturaCSS:', pinturaCSS.toString());
-		console.log('  imageDataUri:', imageDataUri.toString());
+		console.log('  pinturaVideoJS:', pinturaVideoJS?.toString() || 'null');
+		console.log('  pinturaCSS:', pinturaCssUris.map(uri => uri.toString()).join(', '));
+		console.log('  mediaDataUri:', mediaDataUri.toString());
 
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -200,13 +225,17 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 				script-src 'nonce-${nonce}' ${webview.cspSource};
 				style-src 'nonce-${nonce}' 'unsafe-inline' ${webview.cspSource};
 				img-src ${webview.cspSource} https: data: blob:;
+				media-src ${webview.cspSource} https: data: blob:;
 				font-src ${webview.cspSource};
 				connect-src ${webview.cspSource} https: data: blob:;
-				worker-src blob:;">
+				worker-src blob: ${webview.cspSource};
+				child-src blob:;
+				frame-src blob:;
+				object-src blob:;">
 
-	<link href="${pinturaCSS}" rel="stylesheet" nonce="${nonce}">
+	${pinturaCssUris.map(cssUri => `<link href="${cssUri}" rel="stylesheet" nonce="${nonce}">`).join('\n\t')}
 
-	<title>Image Editor - ${utils.getFilename(imageUri.path)}</title>
+	<title>${isVideo ? 'Video' : 'Image'} Editor - ${utils.getFilename(mediaUri.path)}</title>
 
 	<style nonce="${nonce}">
 		html, body {
@@ -218,8 +247,33 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 		}
 
 		#editor-container {
+			position: relative;
 			width: 100%;
 			height: 100%;
+			min-height: 100vh;
+		}
+
+		/* Loading indicator - moved from inline styles to fix CSP */
+		#loading {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			text-align: center;
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+			z-index: 10000;
+			background: var(--vscode-editor-background, white);
+			padding: 20px;
+		}
+
+		#loading.hidden {
+			display: none;
+		}
+
+		#loading .subtitle {
+			margin-top: 20px;
+			color: #666;
+			font-size: 12px;
 		}
 
 		/* Dark theme support */
@@ -233,10 +287,10 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 </head>
 <body>
 	<div id="editor-container"></div>
-	<div id="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-		<h2>🖼️ Loading Image Editor...</h2>
+	<div id="loading">
+		<h2>${isVideo ? '🎬' : '🖼️'} Loading ${isVideo ? 'Video' : 'Image'} Editor...</h2>
 		<p>Initializing Pintura editor</p>
-		<div style="margin-top: 20px; color: #666; font-size: 12px;">If this takes more than 5 seconds, check Developer Tools (Ctrl+Shift+P → "Developer: Open Webview Developer Tools")</div>
+		<div class="subtitle">If this takes more than 5 seconds, check Developer Tools (Ctrl+Shift+P → "Developer: Open Webview Developer Tools")</div>
 	</div>
 
 	<script nonce="${nonce}">
@@ -246,7 +300,9 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 	<script type="module" nonce="${nonce}">
 		console.log('🔵 Webview script started');
 		console.log('📦 Pintura JS URL:', '${pinturaJS}');
-		console.log('🖼️ Image URL:', '${imageDataUri}');
+		console.log('📦 Pintura Video JS URL:', '${pinturaVideoJS?.toString() || 'null'}');
+		console.log('🎬 Media URL:', '${mediaDataUri}');
+		console.log('📺 Is Video:', ${isVideo});
 
 		const vscode = acquireVsCodeApi();
 		console.log('✅ VSCode API acquired');
@@ -256,79 +312,193 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 			const pinturaModule = await import('${pinturaJS}');
 			console.log('✅ Pintura imported:', pinturaModule);
 
-			const { openDefaultEditor } = pinturaModule;
-			console.log('✅ openDefaultEditor function:', openDefaultEditor);
+			const isVideo = ${isVideo};
+			let editor;
 
-			// Initialize Pintura editor
-			console.log('🎨 Initializing Pintura editor...');
-			const editor = openDefaultEditor({
-			src: '${imageDataUri}',
+			if (isVideo) {
+				// Video Editor - requires video extension plugin
+				console.log('📥 Importing Pintura Video extension...');
+				const videoModule = await import('${pinturaVideoJS}');
+				console.log('✅ Pintura Video imported:', videoModule);
 
-			// CSP support
-			csp: {
-				nonce: '${nonce}'
-			},
+				const { openDefaultEditor, setPlugins } = pinturaModule;
+				const { plugin_trim, plugin_trim_locale_en_gb } = videoModule;
 
-			// Available tools - all utilities
-			utils: [
-				'crop',      // Crop and rotate
-				'filter',    // Color filters
-				'finetune',  // Brightness, contrast, saturation
-				'annotate',  // Draw, text, shapes
-				'resize',    // Resize dimensions
-				'redact',    // Blur/pixelate areas
-				'decorate'   // Frames and overlays
-			],
+				console.log('🔌 Registering video plugin...');
+				setPlugins(plugin_trim);
+				console.log('✅ Video plugin registered');
 
-			// Start with crop tool
-			util: 'crop',
-
-			// Crop presets and shape options
-			cropSelectPresetOptions: [
-				[undefined, 'Custom'],
-				[[1, 1], 'Square'],
-				[[16, 9], '16:9'],
-				[[4, 3], '4:3'],
-				[[3, 4], '3:4 (Portrait)'],
-				[[2, 3], '2:3 (Portrait)'],
-				[[3, 2], '3:2 (Landscape)'],
-				[[9, 16], '9:16 (Portrait)']
-			],
-
-			// Enable crop features
-			cropEnableImageSelection: true,
-			cropEnableZoomInput: true,
-			cropEnableRotationInput: true,
-			cropEnableZoomAutoHide: false,
-			cropEnableRotateMatchImageAspectRatio: true,
-
-			// Output configuration
-			imageWriter: {
-				quality: 0.92,
-				mimeType: 'image/jpeg',
-				targetSize: {
-					width: 4096,
-					height: 4096,
-					fit: 'contain',
-					upscale: false
+				// Fetch video and convert to File object for Pintura
+				console.log('📥 Fetching video from vscode-webview:// URL...');
+				const videoResponse = await fetch('${mediaDataUri}');
+				if (!videoResponse.ok) {
+					throw new Error('Failed to fetch video: ' + videoResponse.statusText);
 				}
-			},
+				console.log('✅ Video fetched, size:', videoResponse.headers.get('content-length'), 'bytes');
 
-			// Labels
-			locale: {
-				labelButtonExport: 'Save Changes',
-				labelButtonRevert: 'Reset',
-				labelButtonClose: 'Cancel'
-			},
+				const videoBlob = await videoResponse.blob();
+				console.log('✅ Video converted to blob:', videoBlob.size, 'bytes, type:', videoBlob.type);
 
-			// Enable features
-			enableButtonClose: true,
-			enableButtonExport: true,
-			enableButtonRevert: true,
-			enableDropImage: false,
-			enablePasteImage: false,
-			enableBrowseImage: false
-		});
+				// Extract filename from URL
+				const videoUrl = '${mediaDataUri}';
+				const videoFilename = videoUrl.split('/').pop() || 'video.mp4';
+				console.log('📝 Video filename:', videoFilename);
+
+				// Create File object with proper metadata
+				const videoFile = new File([videoBlob], videoFilename, {
+					type: videoBlob.type || 'video/mp4',
+					lastModified: Date.now()
+				});
+				console.log('✅ File object created:', videoFile.name, videoFile.size, 'bytes, type:', videoFile.type);
+
+				console.log('🎬 Initializing Pintura editor with video support...');
+				const editorContainer = document.getElementById('editor-container');
+				editor = openDefaultEditor({
+					src: videoFile,
+
+					// Mount to container
+					appendTo: editorContainer,
+
+					// CSP support
+					csp: {
+						nonce: '${nonce}'
+					},
+
+					// Video trim configuration (optional, can set initial trim range)
+					imageTrim: undefined, // or [[startTime, endTime]] in seconds
+
+					// Locale with video-specific strings
+					locale: {
+						...plugin_trim_locale_en_gb,
+						labelButtonExport: 'Save Changes',
+						labelButtonRevert: 'Reset',
+						labelButtonClose: 'Cancel'
+					},
+
+					// Enable features
+					enableButtonClose: true,
+					enableButtonExport: true,
+					enableButtonRevert: true,
+					enableDropImage: false
+				});
+			} else {
+				// Image Editor
+				const { openDefaultEditor } = pinturaModule;
+				console.log('✅ openDefaultEditor function:', openDefaultEditor);
+
+				console.log('🖼️ Initializing Pintura image editor...');
+				const editorContainer = document.getElementById('editor-container');
+				editor = openDefaultEditor({
+					src: '${mediaDataUri}',
+
+					// Mount to container
+					appendTo: editorContainer,
+
+					// CSP support
+					csp: {
+						nonce: '${nonce}'
+					},
+
+					// Available tools - all utilities
+					utils: [
+						'crop',      // Crop and rotate
+						'filter',    // Color filters
+						'finetune',  // Brightness, contrast, saturation
+						'annotate',  // Draw, text, shapes
+						'resize',    // Resize dimensions
+						'redact',    // Blur/pixelate areas
+						'decorate'   // Frames and overlays
+					],
+
+					// Start with crop tool
+					util: 'crop',
+
+					// Crop presets and shape options
+					cropSelectPresetOptions: [
+						[undefined, 'Custom'],
+						[[1, 1], 'Square'],
+						[[16, 9], '16:9'],
+						[[4, 3], '4:3'],
+						[[3, 4], '3:4 (Portrait)'],
+						[[2, 3], '2:3 (Portrait)'],
+						[[3, 2], '3:2 (Landscape)'],
+						[[9, 16], '9:16 (Portrait)']
+					],
+
+					// Enable crop features
+					cropEnableImageSelection: true,
+					cropEnableZoomInput: true,
+					cropEnableRotationInput: true,
+					cropEnableZoomAutoHide: false,
+					cropEnableRotateMatchImageAspectRatio: true,
+
+					// Output configuration
+					imageWriter: {
+						quality: 0.92,
+						mimeType: 'image/jpeg',
+						targetSize: {
+							width: 4096,
+							height: 4096,
+							fit: 'contain',
+							upscale: false
+						}
+					},
+
+					// Labels
+					locale: {
+						labelButtonExport: 'Save Changes',
+						labelButtonRevert: 'Reset',
+						labelButtonClose: 'Cancel'
+					},
+
+					// Enable features
+					enableButtonClose: true,
+					enableButtonExport: true,
+					enableButtonRevert: true,
+					enableDropImage: false,
+					enablePasteImage: false,
+					enableBrowseImage: false
+				});
+			}
+
+		// Diagnostic logging for video support
+		if (isVideo) {
+			// Check video codec support
+			const testVideo = document.createElement('video');
+			const codecSupport = {
+				h264: testVideo.canPlayType('video/mp4; codecs="avc1.42E01E"'),
+				vp8: testVideo.canPlayType('video/webm; codecs="vp8"'),
+				vp9: testVideo.canPlayType('video/webm; codecs="vp9"')
+			};
+			console.log('📹 Video codec support:', codecSupport);
+			console.log('🎬 Video source:', '${mediaDataUri}');
+
+			// Listen for blob URL errors
+			window.addEventListener('error', (event) => {
+				if (event.message && event.message.includes('blob:')) {
+					console.error('🔴 Blob URL error detected:', event.message, event);
+					vscode.postMessage({
+						command: 'POST.editor.error',
+						message: 'Blob URL loading failed: ' + event.message
+					});
+				}
+			}, true);
+
+			// Listen for video load success
+			editor.on('loadstart', () => {
+				console.log('🎬 Video loading started...');
+			});
+
+			editor.on('loadprogress', (progressEvent) => {
+				const resolvedProgress = typeof progressEvent === 'number'
+					? progressEvent
+					: (typeof progressEvent?.progress === 'number' ? progressEvent.progress : NaN);
+				const progressDisplay = Number.isFinite(resolvedProgress)
+					? Math.round(resolvedProgress * 100) + '%'
+					: 'unknown';
+				console.log('📊 Video loading progress:', progressDisplay);
+			});
+		}
 
 		// Track modifications
 		editor.on('update', (imageState) => {
@@ -394,7 +564,7 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 		// Hide loading indicator
 		const loadingDiv = document.getElementById('loading');
 		if (loadingDiv) {
-			loadingDiv.style.display = 'none';
+			loadingDiv.classList.add('hidden');
 		}
 
 		} catch (error) {
@@ -445,7 +615,7 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 	}
 }
 
-class ImageDocument implements vscode.CustomDocument {
+class MediaDocument implements vscode.CustomDocument {
 	public isDirty: boolean = false;
 
 	constructor(public readonly uri: vscode.Uri) { }
