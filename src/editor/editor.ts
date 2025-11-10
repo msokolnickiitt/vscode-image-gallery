@@ -283,6 +283,25 @@ class ImageEditorProvider implements vscode.CustomEditorProvider<ImageDocument> 
 			// Start with crop tool
 			util: 'crop',
 
+			// Crop presets and shape options
+			cropSelectPresetOptions: [
+				[undefined, 'Custom'],
+				[[1, 1], 'Square'],
+				[[16, 9], '16:9'],
+				[[4, 3], '4:3'],
+				[[3, 4], '3:4 (Portrait)'],
+				[[2, 3], '2:3 (Portrait)'],
+				[[3, 2], '3:2 (Landscape)'],
+				[[9, 16], '9:16 (Portrait)']
+			],
+
+			// Enable crop features
+			cropEnableImageSelection: true,
+			cropEnableZoomInput: true,
+			cropEnableRotationInput: true,
+			cropEnableZoomAutoHide: false,
+			cropEnableRotateMatchImageAspectRatio: true,
+
 			// Output configuration
 			imageWriter: {
 				quality: 0.92,
