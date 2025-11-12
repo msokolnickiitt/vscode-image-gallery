@@ -151,10 +151,13 @@ export class FalClient {
 
     /**
      * Get pricing for specific models
+     * Note: Pricing API requires valid authentication. Returns empty if unavailable.
      */
     async getModelPricing(endpointIds: string[]): Promise<Record<string, any>> {
-        if (!this.apiKey) {
-            throw new Error('FAL_KEY not configured');
+        // Pricing is optional - skip if no valid API key
+        if (!this.apiKey || this.apiKey.length < 10) {
+            console.log('[FalClient] getModelPricing: Skipping - no valid API key for pricing');
+            return {};
         }
 
         const searchParams = new URLSearchParams();
@@ -165,13 +168,14 @@ export class FalClient {
                 `https://api.fal.ai/v1/models/pricing?${searchParams}`,
                 {
                     headers: {
-                        'Authorization': `Key ${this.apiKey}`
+                        'Authorization': `${this.apiKey}`
                     }
                 }
             );
 
             if (!response.ok) {
-                throw new Error(`Pricing fetch failed: ${response.statusText}`);
+                console.warn(`[FalClient] getModelPricing: Failed with ${response.status} - pricing unavailable`);
+                return {};
             }
 
             const data = await response.json();
@@ -183,21 +187,25 @@ export class FalClient {
                 });
             }
 
+            console.log(`[FalClient] getModelPricing: Retrieved pricing for ${Object.keys(pricingMap).length} models`);
             return pricingMap;
         } catch (error) {
-            console.error('Pricing fetch failed:', error);
+            console.warn('[FalClient] getModelPricing: Failed to fetch pricing, continuing without it');
             return {};
         }
     }
 
     /**
      * Estimate cost for a generation request
+     * Note: Cost estimation requires valid authentication. Returns 0 if unavailable.
      */
     async estimateCost(params: {
         endpoint: string;
         unitQuantity: number;
     }): Promise<number> {
-        if (!this.apiKey) {
+        // Cost estimation is optional - skip if no valid API key
+        if (!this.apiKey || this.apiKey.length < 10 || !this.apiKey.startsWith('fal-')) {
+            console.log('[FalClient] estimateCost: Skipping - no valid API key');
             return 0;
         }
 
@@ -222,14 +230,14 @@ export class FalClient {
             );
 
             if (!response.ok) {
-                console.warn('Cost estimation failed');
+                console.warn('[FalClient] estimateCost: Cost estimation unavailable');
                 return 0;
             }
 
             const data = await response.json();
             return data.total_cost || 0;
         } catch (error) {
-            console.error('Cost estimation failed:', error);
+            console.warn('[FalClient] estimateCost: Failed, continuing without cost estimate');
             return 0;
         }
     }

@@ -209,7 +209,11 @@ class AIGeneratorWebview {
                 break;
 
             case 'POST.generator.estimateCost':
-                await this.handleEstimateCost(message, webview);
+                // Cost estimation disabled - requires admin API key
+                webview.postMessage({
+                    command: 'POST.generator.costEstimate',
+                    cost: 0
+                });
                 break;
         }
     }
@@ -463,6 +467,8 @@ class AIGeneratorWebview {
     private async handleSearchModels(message: any, webview: vscode.Webview) {
         try {
             const { query, category } = message;
+            console.log(`[AI Generator] handleSearchModels: query="${query}", category="${category}"`);
+
             const models = await this.falClient.searchModels({
                 query,
                 category,
@@ -470,21 +476,19 @@ class AIGeneratorWebview {
                 limit: 50
             });
 
-            // Get pricing for models
-            const endpointIds = models.map((m: any) => m.endpoint_id);
-            const pricing = await this.falClient.getModelPricing(endpointIds);
+            console.log(`[AI Generator] handleSearchModels: Retrieved ${models.length} models`);
+            if (models.length > 0) {
+                console.log(`[AI Generator] handleSearchModels: First model:`, models[0].endpoint_id);
+            }
 
-            // Merge pricing into models
-            const modelsWithPricing = models.map((m: any) => ({
-                ...m,
-                pricing: pricing[m.endpoint_id]
-            }));
+            console.log(`[AI Generator] handleSearchModels: Sending ${models.length} models to webview`);
 
             webview.postMessage({
                 command: 'POST.generator.modelsSearchResult',
-                models: modelsWithPricing
+                models: models
             });
         } catch (error) {
+            console.error('[AI Generator] handleSearchModels: Error:', error);
             webview.postMessage({
                 command: 'POST.generator.searchError',
                 error: (error as Error).message
@@ -571,39 +575,6 @@ class AIGeneratorWebview {
         }
     }
 
-    private async handleEstimateCost(message: any, webview: vscode.Webview) {
-        try {
-            const { models, input } = message;
-            let totalCost = 0;
-
-            for (const model of models) {
-                // Estimate unit quantity based on input
-                let unitQuantity = 1;
-
-                if (input.num_images) {
-                    unitQuantity = input.num_images;
-                }
-
-                const cost = await this.falClient.estimateCost({
-                    endpoint: model,
-                    unitQuantity
-                });
-
-                totalCost += cost;
-            }
-
-            webview.postMessage({
-                command: 'POST.generator.costEstimate',
-                cost: totalCost
-            });
-        } catch (error) {
-            console.error('Cost estimation failed:', error);
-            webview.postMessage({
-                command: 'POST.generator.costEstimate',
-                cost: 0
-            });
-        }
-    }
 
     private getHtmlForWebview(webview: vscode.Webview): string {
         const scriptUri = webview.asWebviewUri(
@@ -631,17 +602,19 @@ class AIGeneratorWebview {
 </head>
 <body>
     <div id="app">
+        <!-- Top Header Bar -->
         <div class="header">
             <h1>AI Media Generator</h1>
             <div id="api-key-status"></div>
         </div>
 
-        <div class="tab-switcher">
-            <button class="tab-btn active" data-tab="image">Image</button>
-            <button class="tab-btn" data-tab="video">Video</button>
-        </div>
+        <!-- Left Sidebar - Controls -->
+        <div class="sidebar">
+            <div class="tab-switcher">
+                <button class="tab-btn active" data-tab="image">Image</button>
+                <button class="tab-btn" data-tab="video">Video</button>
+            </div>
 
-        <div class="content">
             <div class="form-section">
                 <label>Type</label>
                 <select id="generation-mode" class="mode-select">
@@ -661,12 +634,12 @@ class AIGeneratorWebview {
             </div>
 
             <div class="form-section">
-                <label>Model Selection</label>
+                <label>Models</label>
                 <div class="model-selection">
                     <div class="selected-models" id="selected-models"></div>
                     <div class="model-actions">
-                        <input type="text" id="model-search" placeholder="Search models..." class="search-input">
-                        <button id="explore-sets-btn" class="secondary-btn">Explore Sets</button>
+                        <input type="text" id="model-search" placeholder="Search..." class="search-input">
+                        <button id="explore-sets-btn" class="secondary-btn">Sets</button>
                     </div>
                     <div id="model-search-results" class="model-list" style="display:none;"></div>
                 </div>
@@ -674,20 +647,19 @@ class AIGeneratorWebview {
 
             <div id="prompt-section" class="form-section">
                 <label>Prompt <span class="required">*</span></label>
-                <textarea id="prompt" placeholder="Enter your prompt here..." rows="4"></textarea>
+                <textarea id="prompt" placeholder="Describe what you want to generate..." rows="3"></textarea>
             </div>
 
             <div id="image-upload-section" class="form-section" style="display:none;">
                 <label>Image</label>
                 <div class="image-upload-area" id="image-upload">
                     <div class="upload-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                             <circle cx="8.5" cy="8.5" r="1.5"/>
                             <polyline points="21 15 16 10 5 21"/>
                         </svg>
-                        <p>No image added</p>
-                        <button class="secondary-btn" id="choose-image-btn">Choose</button>
+                        <p>Click to upload</p>
                     </div>
                 </div>
                 <input type="file" id="image-file-input" accept="image/*" style="display:none;">
@@ -704,7 +676,7 @@ class AIGeneratorWebview {
             <div id="aspect-ratio-section" class="form-section">
                 <label>Aspect Ratio</label>
                 <div class="aspect-ratio-grid">
-                    <button class="ratio-btn active" data-ratio="default">Default</button>
+                    <button class="ratio-btn active" data-ratio="default">Auto</button>
                     <button class="ratio-btn" data-ratio="square">1:1</button>
                     <button class="ratio-btn" data-ratio="landscape_4_3">4:3</button>
                     <button class="ratio-btn" data-ratio="portrait_4_3">3:4</button>
@@ -712,35 +684,37 @@ class AIGeneratorWebview {
                     <button class="ratio-btn" data-ratio="portrait_16_9">9:16</button>
                 </div>
             </div>
+        </div>
 
-            <div class="action-bar">
-                <div class="cost-estimate">
-                    <span id="cost-label">Est. <span id="cost-value">$0.00</span></span>
-                </div>
-                <button id="run-btn" class="run-btn">
-                    Run <kbd>ctrl</kbd>
-                </button>
+        <!-- Main Content Area - Results & History -->
+        <div class="content">
+            <div id="results-section" class="results-section">
+                <h3>Results</h3>
+                <div id="results-grid" class="results-grid"></div>
+            </div>
+
+            <div id="history-section" class="history-section">
+                <h3>History</h3>
+                <div id="history-list" class="history-list"></div>
             </div>
         </div>
 
-        <div id="results-section" class="results-section">
-            <h3>Results</h3>
-            <div id="results-grid" class="results-grid"></div>
-        </div>
-
-        <div id="history-section" class="history-section">
-            <h3>History</h3>
-            <div id="history-list" class="history-list"></div>
+        <!-- Bottom Action Bar -->
+        <div class="action-bar">
+            <button id="run-btn" class="run-btn">
+                Generate <kbd>Ctrl+↵</kbd>
+            </button>
         </div>
     </div>
 
+    <!-- Model Set Modal -->
     <div id="model-set-modal" class="modal" style="display:none;">
         <div class="modal-content">
-            <h2>Select Model Set</h2>
+            <h2>Model Sets</h2>
             <div id="model-sets-list"></div>
             <div class="modal-actions">
                 <button id="cancel-set-btn" class="secondary-btn">Cancel</button>
-                <button id="select-set-btn" class="primary-btn">Select Set</button>
+                <button id="select-set-btn" class="primary-btn">Select</button>
             </div>
         </div>
     </div>

@@ -16,8 +16,7 @@
         startFrameData: null,
         endFrameData: null,
         duration: '5',
-        aspectRatio: 'default',
-        estimatedCost: 0
+        aspectRatio: 'default'
     };
 
     // DOM Elements
@@ -33,7 +32,6 @@
     const selectedModelsContainer = document.getElementById('selected-models');
     const exploreSetsBtn = document.getElementById('explore-sets-btn');
     const runBtn = document.getElementById('run-btn');
-    const costValue = document.getElementById('cost-value');
     const resultsGrid = document.getElementById('results-grid');
     const historyList = document.getElementById('history-list');
     const apiKeyStatus = document.getElementById('api-key-status');
@@ -47,7 +45,6 @@
     // Image upload
     const imageUpload = document.getElementById('image-upload');
     const imageFileInput = document.getElementById('image-file-input');
-    const chooseImageBtn = document.getElementById('choose-image-btn');
 
     // Initialize
     init();
@@ -72,7 +69,6 @@
             state.mode = e.target.value;
             updateUIForMode();
             updateTabForMode();
-            estimateCost();
         });
 
         // Model search
@@ -91,7 +87,7 @@
         });
 
         // Image upload
-        chooseImageBtn.addEventListener('click', () => {
+        imageUpload.addEventListener('click', () => {
             imageFileInput.click();
         });
 
@@ -126,7 +122,6 @@
                 document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 state.duration = btn.dataset.duration;
-                estimateCost();
             });
         });
 
@@ -160,11 +155,6 @@
         selectSetBtn.addEventListener('click', () => {
             selectModelSet();
         });
-
-        // Prompt change
-        promptTextarea.addEventListener('input', debounce(() => {
-            estimateCost();
-        }, 500));
     }
 
     function switchTab(tab) {
@@ -224,8 +214,6 @@
         // Clear selected models when mode changes
         // state.selectedModels = [];
         // updateSelectedModelsUI();
-
-        estimateCost();
     }
 
     function searchModels(query) {
@@ -242,7 +230,6 @@
         if (!state.selectedModels.find(m => m === model.endpoint_id)) {
             state.selectedModels.push(model.endpoint_id);
             updateSelectedModelsUI();
-            estimateCost();
         }
         modelSearchResults.style.display = 'none';
         modelSearchInput.value = '';
@@ -251,7 +238,6 @@
     function removeModel(endpointId) {
         state.selectedModels = state.selectedModels.filter(m => m !== endpointId);
         updateSelectedModelsUI();
-        estimateCost();
     }
 
     function updateSelectedModelsUI() {
@@ -318,7 +304,6 @@
             if (modelSet) {
                 state.selectedModels = [...modelSet.models];
                 updateSelectedModelsUI();
-                estimateCost();
             }
         }
         hideModelSetModal();
@@ -344,24 +329,6 @@
         });
     }
 
-    function estimateCost() {
-        if (state.selectedModels.length === 0) {
-            costValue.textContent = '$0.00';
-            costValue.classList.remove('high');
-            return;
-        }
-
-        const input = {
-            num_images: 1,
-            duration: state.duration
-        };
-
-        vscode.postMessage({
-            command: 'POST.generator.estimateCost',
-            models: state.selectedModels,
-            input
-        });
-    }
 
     function runGeneration() {
         // Validate
@@ -504,6 +471,7 @@
     // Message handling from extension
     window.addEventListener('message', event => {
         const message = event.data;
+        console.log('[WebView] Received message:', message.command, message);
 
         switch (message.command) {
             case 'POST.generator.apiKeyStatus':
@@ -524,18 +492,11 @@
                 break;
 
             case 'POST.generator.modelsSearchResult':
-                displaySearchResults(message.models);
-                break;
-
-            case 'POST.generator.costEstimate':
-                const cost = message.cost || 0;
-                costValue.textContent = `$${cost.toFixed(2)}`;
-                if (cost > 1) {
-                    costValue.classList.add('high');
-                } else {
-                    costValue.classList.remove('high');
+                console.log('[WebView] Received modelsSearchResult:', message.models?.length, 'models');
+                if (message.models?.length > 0) {
+                    console.log('[WebView] First model:', message.models[0]);
                 }
-                state.estimatedCost = cost;
+                displaySearchResults(message.models);
                 break;
 
             case 'POST.generator.enqueued':
@@ -570,36 +531,46 @@
     });
 
     function displaySearchResults(models) {
-        if (models.length === 0) {
+        console.log('[WebView] displaySearchResults called with:', models?.length, 'models');
+        console.log('[WebView] modelSearchResults element:', modelSearchResults);
+
+        if (!models || models.length === 0) {
+            console.log('[WebView] No models to display');
             modelSearchResults.innerHTML = '<div class="model-item">No models found</div>';
         } else {
-            modelSearchResults.innerHTML = models.map(model => {
-                const price = model.pricing
-                    ? `$${model.pricing.unit_price} / ${model.pricing.unit}`
-                    : 'Pricing unavailable';
+            console.log('[WebView] Rendering', models.length, 'models');
+            try {
+                modelSearchResults.innerHTML = models.map(model => {
+                    return `
+                        <div class="model-item" data-endpoint="${model.endpoint_id}">
+                            <div class="model-name">${model.metadata?.display_name || 'Unknown'}</div>
+                            <div class="model-id">${model.endpoint_id}</div>
+                        </div>
+                    `;
+                }).join('');
 
-                return `
-                    <div class="model-item" data-endpoint="${model.endpoint_id}">
-                        <div class="model-name">${model.metadata.display_name}</div>
-                        <div class="model-id">${model.endpoint_id}</div>
-                        <div class="model-price">${price}</div>
-                    </div>
-                `;
-            }).join('');
+                console.log('[WebView] HTML generated, attaching click listeners');
 
-            // Attach click listeners
-            modelSearchResults.querySelectorAll('.model-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const endpoint = item.dataset.endpoint;
-                    const model = models.find(m => m.endpoint_id === endpoint);
-                    if (model) {
-                        addModel(model);
-                    }
+                // Attach click listeners
+                modelSearchResults.querySelectorAll('.model-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const endpoint = item.dataset.endpoint;
+                        const model = models.find(m => m.endpoint_id === endpoint);
+                        if (model) {
+                            console.log('[WebView] Model clicked:', endpoint);
+                            addModel(model);
+                        }
+                    });
                 });
-            });
+
+                console.log('[WebView] Click listeners attached');
+            } catch (error) {
+                console.error('[WebView] Error rendering models:', error);
+            }
         }
 
         modelSearchResults.style.display = 'block';
+        console.log('[WebView] modelSearchResults display set to block');
     }
 
     function handleQueueUpdate(update) {
