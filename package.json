@@ -150,6 +150,7 @@
 		"webpack-cli": "^4.9.2"
 	},
 	"dependencies": {
+		"@fal-ai/client": "^1.7.2",
 		"@pqina/pintura": "^8.95.2",
 		"@pqina/pintura-video": "^1.16.3",
 		"@vscode/extension-telemetry": "^0.6.2",
