@@ -1,0 +1,613 @@
+/* AI Media Generator - Client-side Script */
+
+(function () {
+    const vscode = acquireVsCodeApi();
+
+    // State
+    let state = {
+        currentTab: 'image',
+        mode: 'text-to-image',
+        selectedModels: [],
+        modelSets: [],
+        searchResults: [],
+        history: [],
+        currentRequest: null,
+        imageData: null,
+        startFrameData: null,
+        endFrameData: null,
+        duration: '5',
+        aspectRatio: 'default',
+        estimatedCost: 0
+    };
+
+    // DOM Elements
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const modeSelect = document.getElementById('generation-mode');
+    const promptSection = document.getElementById('prompt-section');
+    const promptTextarea = document.getElementById('prompt');
+    const imageUploadSection = document.getElementById('image-upload-section');
+    const videoDurationSection = document.getElementById('video-duration-section');
+    const aspectRatioSection = document.getElementById('aspect-ratio-section');
+    const modelSearchInput = document.getElementById('model-search');
+    const modelSearchResults = document.getElementById('model-search-results');
+    const selectedModelsContainer = document.getElementById('selected-models');
+    const exploreSetsBtn = document.getElementById('explore-sets-btn');
+    const runBtn = document.getElementById('run-btn');
+    const costValue = document.getElementById('cost-value');
+    const resultsGrid = document.getElementById('results-grid');
+    const historyList = document.getElementById('history-list');
+    const apiKeyStatus = document.getElementById('api-key-status');
+
+    // Modal
+    const modelSetModal = document.getElementById('model-set-modal');
+    const modelSetsList = document.getElementById('model-sets-list');
+    const cancelSetBtn = document.getElementById('cancel-set-btn');
+    const selectSetBtn = document.getElementById('select-set-btn');
+
+    // Image upload
+    const imageUpload = document.getElementById('image-upload');
+    const imageFileInput = document.getElementById('image-file-input');
+    const chooseImageBtn = document.getElementById('choose-image-btn');
+
+    // Initialize
+    init();
+
+    function init() {
+        attachEventListeners();
+        vscode.postMessage({ command: 'POST.generator.ready' });
+        updateUIForMode();
+    }
+
+    function attachEventListeners() {
+        // Tab switching
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                switchTab(tab);
+            });
+        });
+
+        // Mode selection
+        modeSelect.addEventListener('change', (e) => {
+            state.mode = e.target.value;
+            updateUIForMode();
+            updateTabForMode();
+            estimateCost();
+        });
+
+        // Model search
+        modelSearchInput.addEventListener('input', debounce((e) => {
+            const query = e.target.value.trim();
+            if (query.length > 2) {
+                searchModels(query);
+            } else {
+                modelSearchResults.style.display = 'none';
+            }
+        }, 300));
+
+        // Explore sets
+        exploreSetsBtn.addEventListener('click', () => {
+            showModelSetModal();
+        });
+
+        // Image upload
+        chooseImageBtn.addEventListener('click', () => {
+            imageFileInput.click();
+        });
+
+        imageFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadImageFile(file);
+            }
+        });
+
+        imageUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageUpload.style.borderColor = 'var(--primary-color)';
+        });
+
+        imageUpload.addEventListener('dragleave', () => {
+            imageUpload.style.borderColor = '';
+        });
+
+        imageUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageUpload.style.borderColor = '';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImageFile(file);
+            }
+        });
+
+        // Duration buttons
+        document.querySelectorAll('.duration-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.duration = btn.dataset.duration;
+                estimateCost();
+            });
+        });
+
+        // Aspect ratio buttons
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.aspectRatio = btn.dataset.ratio;
+            });
+        });
+
+        // Run button
+        runBtn.addEventListener('click', () => {
+            runGeneration();
+        });
+
+        // Keyboard shortcut (Ctrl+Enter)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                runGeneration();
+            }
+        });
+
+        // Modal
+        cancelSetBtn.addEventListener('click', () => {
+            hideModelSetModal();
+        });
+
+        selectSetBtn.addEventListener('click', () => {
+            selectModelSet();
+        });
+
+        // Prompt change
+        promptTextarea.addEventListener('input', debounce(() => {
+            estimateCost();
+        }, 500));
+    }
+
+    function switchTab(tab) {
+        state.currentTab = tab;
+
+        tabButtons.forEach(btn => {
+            if (btn.dataset.tab === tab) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Update mode select options
+        const optgroups = modeSelect.querySelectorAll('optgroup');
+        if (tab === 'image') {
+            state.mode = 'text-to-image';
+            modeSelect.selectedIndex = 0;
+        } else {
+            state.mode = 'text-to-video';
+            modeSelect.selectedIndex = 5; // First video option
+        }
+
+        updateUIForMode();
+    }
+
+    function updateTabForMode() {
+        const videoModes = ['text-to-video', 'image-to-video', 'start-end-frame'];
+        const targetTab = videoModes.includes(state.mode) ? 'video' : 'image';
+
+        if (state.currentTab !== targetTab) {
+            switchTab(targetTab);
+        }
+    }
+
+    function updateUIForMode() {
+        const mode = state.mode;
+
+        // Show/hide sections based on mode
+        const needsPrompt = !['upscaling', 'remove-background'].includes(mode);
+        const needsImage = ['edit-image', 'upscaling', 'remove-background', 'image-to-video', 'start-end-frame'].includes(mode);
+        const needsDuration = ['image-to-video', 'text-to-video', 'start-end-frame'].includes(mode);
+        const needsAspectRatio = ['text-to-image', 'edit-image'].includes(mode);
+
+        promptSection.style.display = needsPrompt ? 'flex' : 'none';
+        imageUploadSection.style.display = needsImage ? 'flex' : 'none';
+        videoDurationSection.style.display = needsDuration ? 'flex' : 'none';
+        aspectRatioSection.style.display = needsAspectRatio ? 'flex' : 'none';
+
+        // Update prompt label
+        if (mode === 'edit-multi-images') {
+            promptTextarea.placeholder = 'Apply this edit to all images...';
+        } else {
+            promptTextarea.placeholder = 'Enter your prompt here...';
+        }
+
+        // Clear selected models when mode changes
+        // state.selectedModels = [];
+        // updateSelectedModelsUI();
+
+        estimateCost();
+    }
+
+    function searchModels(query) {
+        const category = state.currentTab === 'image' ? 'text-to-image' : 'text-to-video';
+
+        vscode.postMessage({
+            command: 'POST.generator.searchModels',
+            query,
+            category
+        });
+    }
+
+    function addModel(model) {
+        if (!state.selectedModels.find(m => m === model.endpoint_id)) {
+            state.selectedModels.push(model.endpoint_id);
+            updateSelectedModelsUI();
+            estimateCost();
+        }
+        modelSearchResults.style.display = 'none';
+        modelSearchInput.value = '';
+    }
+
+    function removeModel(endpointId) {
+        state.selectedModels = state.selectedModels.filter(m => m !== endpointId);
+        updateSelectedModelsUI();
+        estimateCost();
+    }
+
+    function updateSelectedModelsUI() {
+        if (state.selectedModels.length === 0) {
+            selectedModelsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 13px;">No models selected</span>';
+            return;
+        }
+
+        selectedModelsContainer.innerHTML = state.selectedModels.map(endpointId => {
+            const displayName = formatModelName(endpointId);
+            return `
+                <div class="model-chip">
+                    <span>${displayName}</span>
+                    <button class="remove-btn" data-model="${endpointId}">×</button>
+                </div>
+            `;
+        }).join('');
+
+        // Attach remove listeners
+        selectedModelsContainer.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                removeModel(btn.dataset.model);
+            });
+        });
+    }
+
+    function formatModelName(endpointId) {
+        return endpointId.split('/').pop().split('-').map(w =>
+            w.charAt(0).toUpperCase() + w.slice(1)
+        ).join(' ');
+    }
+
+    function showModelSetModal() {
+        modelSetsList.innerHTML = state.modelSets.map(set => `
+            <div class="model-set-card" data-set-id="${set.id}">
+                <div class="set-name">${set.name}</div>
+                <div class="set-description">${set.description}</div>
+                <div class="set-models">
+                    ${set.models.map(m => `<span class="model-pill">${formatModelName(m)}</span>`).join('')}
+                </div>
+            </div>
+        `).join('');
+
+        // Attach click listeners
+        modelSetsList.querySelectorAll('.model-set-card').forEach(card => {
+            card.addEventListener('click', () => {
+                modelSetsList.querySelectorAll('.model-set-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+            });
+        });
+
+        modelSetModal.style.display = 'flex';
+    }
+
+    function hideModelSetModal() {
+        modelSetModal.style.display = 'none';
+    }
+
+    function selectModelSet() {
+        const selectedCard = modelSetsList.querySelector('.model-set-card.selected');
+        if (selectedCard) {
+            const setId = selectedCard.dataset.setId;
+            const modelSet = state.modelSets.find(s => s.id === setId);
+            if (modelSet) {
+                state.selectedModels = [...modelSet.models];
+                updateSelectedModelsUI();
+                estimateCost();
+            }
+        }
+        hideModelSetModal();
+    }
+
+    function loadImageFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.imageData = e.target.result;
+            displayImagePreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function displayImagePreview(dataUrl) {
+        imageUpload.innerHTML = `
+            <img src="${dataUrl}" class="image-preview" alt="Uploaded image">
+            <button class="secondary-btn" style="margin-top: 12px;" id="change-image-btn">Change Image</button>
+        `;
+
+        document.getElementById('change-image-btn').addEventListener('click', () => {
+            imageFileInput.click();
+        });
+    }
+
+    function estimateCost() {
+        if (state.selectedModels.length === 0) {
+            costValue.textContent = '$0.00';
+            costValue.classList.remove('high');
+            return;
+        }
+
+        const input = {
+            num_images: 1,
+            duration: state.duration
+        };
+
+        vscode.postMessage({
+            command: 'POST.generator.estimateCost',
+            models: state.selectedModels,
+            input
+        });
+    }
+
+    function runGeneration() {
+        // Validate
+        if (state.selectedModels.length === 0) {
+            showError('Please select at least one model');
+            return;
+        }
+
+        const needsPrompt = !['upscaling', 'remove-background'].includes(state.mode);
+        const needsImage = ['edit-image', 'upscaling', 'remove-background', 'image-to-video', 'start-end-frame'].includes(state.mode);
+
+        if (needsPrompt && !promptTextarea.value.trim()) {
+            showError('Please enter a prompt');
+            return;
+        }
+
+        if (needsImage && !state.imageData) {
+            showError('Please upload an image');
+            return;
+        }
+
+        // Prepare input
+        const input = {
+            prompt: promptTextarea.value.trim(),
+            image_size: state.aspectRatio !== 'default' ? state.aspectRatio : undefined,
+            duration: state.duration
+        };
+
+        if (state.imageData) {
+            input.image_data = state.imageData;
+        }
+
+        const requestId = `req-${Date.now()}`;
+        state.currentRequest = requestId;
+
+        // Disable run button
+        runBtn.disabled = true;
+        runBtn.innerHTML = '<span class="spinner"></span> Generating...';
+
+        // Send generation request
+        vscode.postMessage({
+            command: 'POST.generator.generate',
+            mode: state.mode,
+            models: state.selectedModels,
+            input,
+            requestId
+        });
+    }
+
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        document.querySelector('.content').prepend(errorDiv);
+
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
+    }
+
+    function addResultToGrid(result) {
+        const isVideo = result.type === 'video';
+        const mediaTag = isVideo
+            ? `<video src="${result.url}" controls></video>`
+            : `<img src="${result.url}" alt="Generated ${result.type}">`;
+
+        const dimensions = result.width && result.height
+            ? `${result.width} × ${result.height}`
+            : '';
+
+        const card = document.createElement('div');
+        card.className = 'result-card';
+        card.innerHTML = `
+            ${mediaTag}
+            <div class="result-card-info">
+                <div class="model-name">${formatModelName(result.model)}</div>
+                ${dimensions ? `<div class="dimensions">${dimensions}</div>` : ''}
+            </div>
+            <div class="result-card-actions">
+                <button class="secondary-btn save-btn" data-url="${result.url}" data-type="${result.type}">Save</button>
+                <button class="secondary-btn view-btn" data-url="${result.url}">View</button>
+            </div>
+        `;
+
+        resultsGrid.prepend(card);
+
+        // Attach action listeners
+        card.querySelector('.save-btn').addEventListener('click', (e) => {
+            saveResult(e.target.dataset.url, e.target.dataset.type);
+        });
+
+        card.querySelector('.view-btn').addEventListener('click', (e) => {
+            window.open(e.target.dataset.url, '_blank');
+        });
+    }
+
+    function saveResult(url, type) {
+        const ext = type === 'video' ? 'mp4' : 'jpg';
+        const filename = `generated-${Date.now()}.${ext}`;
+
+        vscode.postMessage({
+            command: 'POST.generator.saveResult',
+            url,
+            type,
+            filename
+        });
+    }
+
+    function updateHistory() {
+        if (state.history.length === 0) {
+            historyList.innerHTML = '<p style="color: var(--text-secondary);">No generation history</p>';
+            return;
+        }
+
+        historyList.innerHTML = state.history.slice(0, 10).map(req => {
+            const timestamp = new Date(req.createdAt).toLocaleString();
+            const prompt = req.input.prompt || 'No prompt';
+
+            return `
+                <div class="history-item">
+                    <div class="history-header">
+                        <span class="mode">${req.mode.replace(/-/g, ' ')}</span>
+                        <span class="timestamp">${timestamp}</span>
+                    </div>
+                    <div class="prompt">${prompt}</div>
+                    <span class="status ${req.status}">${req.status}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // Message handling from extension
+    window.addEventListener('message', event => {
+        const message = event.data;
+
+        switch (message.command) {
+            case 'POST.generator.apiKeyStatus':
+                if (message.isValid) {
+                    apiKeyStatus.textContent = 'API Key Valid';
+                    apiKeyStatus.className = 'valid';
+                } else {
+                    apiKeyStatus.textContent = 'API Key Missing';
+                    apiKeyStatus.className = 'invalid';
+                    showError('FAL_KEY environment variable not set. Please configure your API key.');
+                }
+                break;
+
+            case 'POST.generator.initialData':
+                state.modelSets = message.modelSets;
+                state.history = message.history;
+                updateHistory();
+                break;
+
+            case 'POST.generator.modelsSearchResult':
+                displaySearchResults(message.models);
+                break;
+
+            case 'POST.generator.costEstimate':
+                const cost = message.cost || 0;
+                costValue.textContent = `$${cost.toFixed(2)}`;
+                if (cost > 1) {
+                    costValue.classList.add('high');
+                } else {
+                    costValue.classList.remove('high');
+                }
+                state.estimatedCost = cost;
+                break;
+
+            case 'POST.generator.enqueued':
+                console.log('Enqueued:', message.model);
+                break;
+
+            case 'POST.generator.queueUpdate':
+                handleQueueUpdate(message.update);
+                break;
+
+            case 'POST.generator.resultReady':
+                message.results.forEach(result => addResultToGrid(result));
+                break;
+
+            case 'POST.generator.allCompleted':
+                runBtn.disabled = false;
+                runBtn.innerHTML = 'Run <kbd>ctrl</kbd>';
+                state.currentRequest = null;
+                updateHistory();
+                break;
+
+            case 'POST.generator.error':
+                showError(`Error (${message.model || 'Unknown'}): ${message.error}`);
+                runBtn.disabled = false;
+                runBtn.innerHTML = 'Run <kbd>ctrl</kbd>';
+                break;
+
+            case 'POST.generator.saveSuccess':
+                console.log('Saved to:', message.path);
+                break;
+        }
+    });
+
+    function displaySearchResults(models) {
+        if (models.length === 0) {
+            modelSearchResults.innerHTML = '<div class="model-item">No models found</div>';
+        } else {
+            modelSearchResults.innerHTML = models.map(model => {
+                const price = model.pricing
+                    ? `$${model.pricing.unit_price} / ${model.pricing.unit}`
+                    : 'Pricing unavailable';
+
+                return `
+                    <div class="model-item" data-endpoint="${model.endpoint_id}">
+                        <div class="model-name">${model.metadata.display_name}</div>
+                        <div class="model-id">${model.endpoint_id}</div>
+                        <div class="model-price">${price}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Attach click listeners
+            modelSearchResults.querySelectorAll('.model-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const endpoint = item.dataset.endpoint;
+                    const model = models.find(m => m.endpoint_id === endpoint);
+                    if (model) {
+                        addModel(model);
+                    }
+                });
+            });
+        }
+
+        modelSearchResults.style.display = 'block';
+    }
+
+    function handleQueueUpdate(update) {
+        if (update.status === 'IN_QUEUE') {
+            runBtn.innerHTML = `<span class="spinner"></span> Queue position: ${update.queue_position || '?'}`;
+        } else if (update.status === 'IN_PROGRESS') {
+            runBtn.innerHTML = '<span class="spinner"></span> Processing...';
+        }
+    }
+
+})();

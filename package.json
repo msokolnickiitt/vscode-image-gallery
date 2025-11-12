@@ -30,7 +30,9 @@
 	],
 	"activationEvents": [
 		"onCommand:gryc.openGallery",
+		"onCommand:gryc.openAIGenerator",
 		"onWebviewPanel:gryc.gallery",
+		"onWebviewPanel:gryc.generator",
 		"onCustomEditor:gryc.viewer",
 		"onCustomEditor:gryc.editor"
 	],
@@ -103,6 +105,11 @@
 				"command": "gryc.openGallery",
 				"title": "Open Image & Video Gallery (GeriYoco) 🖼️",
 				"category": "Image & Video Gallery"
+			},
+			{
+				"command": "gryc.openAIGenerator",
+				"title": "Open AI Media Generator (GeriYoco) 🤖",
+				"category": "Image & Video Gallery"
 			}
 		],
 		"menus": {
@@ -111,6 +118,19 @@
 					"command": "gryc.openGallery",
 					"group": "2_grycImageGallery@1",
 					"when": "explorerResourceIsFolder && !virtualWorkspace"
+				},
+				{
+					"command": "gryc.openAIGenerator",
+					"group": "2_grycImageGallery@2",
+					"when": "explorerResourceIsFolder && !virtualWorkspace"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "gryc.openGallery"
+				},
+				{
+					"command": "gryc.openAIGenerator"
 				}
 			]
 		}

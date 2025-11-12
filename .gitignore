@@ -6,3 +6,7 @@ src/test/samples/folder*
 .vscode-test-web/
 /.idea/
 /vscode-image-gallery-1.2.1.vsix
+
+# Environment variables
+.env
+.env.local
