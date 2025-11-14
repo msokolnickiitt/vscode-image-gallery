@@ -80,7 +80,7 @@
 		},
 		"customEditors": [
 			{
-				"displayName": "Media Editor (GeriYoco Image & Video Gallery)",
+				"displayName": "Media Editor (Image & Video Gallery)",
 				"viewType": "gryc.editor",
 				"priority": "option",
 				"selector": [
@@ -90,7 +90,7 @@
 				]
 			},
 			{
-				"displayName": "Viewer (GeriYoco Image & Video Gallery)",
+				"displayName": "Viewer (Image & Video Gallery)",
 				"viewType": "gryc.viewer",
 				"priority": "default",
 				"selector": [
@@ -103,12 +103,12 @@
 		"commands": [
 			{
 				"command": "gryc.openGallery",
-				"title": "Open Image & Video Gallery (GeriYoco) 🖼️",
+				"title": "Open Image & Video Gallery 🖼️",
 				"category": "Image & Video Gallery"
 			},
 			{
 				"command": "gryc.openAIGenerator",
-				"title": "Open AI Media Generator (GeriYoco) 🤖",
+				"title": "Open AI Media Generator 🤖",
 				"category": "Image & Video Gallery"
 			}
 		],
