@@ -19,6 +19,7 @@
         multiImageData: [],
         startFrameData: null,
         endFrameData: null,
+        referenceImages: [null, null, null], // 1-3 reference images for Reference to Video
         duration: '5',
         aspectRatio: 'default'
     };
@@ -54,6 +55,7 @@
     const singleVideoUpload = document.getElementById('single-video-upload');
     const multiImageUpload = document.getElementById('multi-image-upload');
     const dualImageUpload = document.getElementById('dual-image-upload');
+    const referenceImagesUpload = document.getElementById('reference-images-upload');
 
     // Upload areas and inputs
     const singleImageArea = document.getElementById('single-image-area');
@@ -133,7 +135,7 @@
         });
         setupDragAndDrop(singleImageArea, (file) => {
             if (file.type.startsWith('image/')) loadSingleImage(file);
-        });
+        }, 'image');
 
         // Single Video Upload
         singleVideoArea.addEventListener('click', () => singleVideoInput.click());
@@ -143,7 +145,7 @@
         });
         setupDragAndDrop(singleVideoArea, (file) => {
             if (file.type.startsWith('video/')) loadSingleVideo(file);
-        });
+        }, 'video');
 
         // Multi Image Upload
         multiImageArea.addEventListener('click', () => multiImageInput.click());
@@ -156,7 +158,7 @@
         setupDragAndDrop(multiImageArea, (file, files) => {
             const imageFiles = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [file];
             if (imageFiles.length > 0) loadMultiImages(imageFiles, false);
-        });
+        }, 'image');
 
         // Dual Image Upload (Start/End Frame)
         startFrameArea.addEventListener('click', () => startFrameInput.click());
@@ -166,7 +168,7 @@
         });
         setupDragAndDrop(startFrameArea, (file) => {
             if (file.type.startsWith('image/')) loadStartFrame(file);
-        });
+        }, 'image');
 
         endFrameArea.addEventListener('click', () => endFrameInput.click());
         endFrameInput.addEventListener('change', (e) => {
@@ -175,7 +177,7 @@
         });
         setupDragAndDrop(endFrameArea, (file) => {
             if (file.type.startsWith('image/')) loadEndFrame(file);
-        });
+        }, 'image');
 
         // Duration buttons
         document.querySelectorAll('.duration-btn').forEach(btn => {
@@ -295,6 +297,7 @@
         singleVideoUpload.style.display = 'none';
         multiImageUpload.style.display = 'none';
         dualImageUpload.style.display = 'none';
+        referenceImagesUpload.style.display = 'none';
 
         // Show the appropriate upload section
         if (uploadType === 'single-image') {
@@ -305,6 +308,10 @@
             multiImageUpload.style.display = 'flex';
         } else if (uploadType === 'dual-image') {
             dualImageUpload.style.display = 'flex';
+        } else if (uploadType === 'reference-images') {
+            referenceImagesUpload.style.display = 'flex';
+            // Initialize reference images display
+            displayReferenceImages();
         }
 
         // Show/hide other sections based on mode
@@ -341,7 +348,7 @@
             'image-to-video': 'single-image',
             'start-end-frame': 'dual-image',
             'video-upscaling': 'single-video',
-            'reference-to-video': 'single-image'
+            'reference-to-video': 'reference-images'
         };
         return uploadMap[mode] || 'none';
     }
@@ -524,8 +531,8 @@
         hideModelSetModal();
     }
 
-    // Drag and drop helper
-    function setupDragAndDrop(element, onDrop) {
+    // Drag and drop helper - supports both File objects and VSCode URIs
+    function setupDragAndDrop(element, onDrop, fileType = 'any') {
         element.addEventListener('dragover', (e) => {
             e.preventDefault();
             element.style.borderColor = 'var(--pintura-accent)';
@@ -535,12 +542,31 @@
             element.style.borderColor = '';
         });
 
-        element.addEventListener('drop', (e) => {
+        element.addEventListener('drop', async (e) => {
             e.preventDefault();
             element.style.borderColor = '';
+
+            // First try to get files (browser drag from file system)
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 onDrop(files[0], files);
+                return;
+            }
+
+            // Try to get VSCode URI (drag from VSCode explorer)
+            const uriList = e.dataTransfer.getData('text/uri-list');
+            if (uriList) {
+                const uris = uriList.split('\n').filter(uri => uri && !uri.startsWith('#'));
+                if (uris.length > 0) {
+                    // Request extension to read the file(s)
+                    for (const uri of uris) {
+                        vscode.postMessage({
+                            command: 'POST.generator.readDroppedFile',
+                            uri: uri,
+                            fileType: fileType
+                        });
+                    }
+                }
             }
         });
     }
@@ -676,6 +702,14 @@
                 document.body.appendChild(tempInput);
                 tempInput.click();
             });
+
+            // Add drag and drop to "Add More" button
+            setupDragAndDrop(addMoreBtn, (file, files) => {
+                const imageFiles = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [file];
+                if (imageFiles.length > 0) {
+                    loadMultiImages(imageFiles, true); // append = true
+                }
+            }, 'image');
         }
     }
 
@@ -715,6 +749,96 @@
         }, 0);
     }
 
+    // Reference Images Upload (1-3 images)
+    function loadReferenceImage(file, index) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.referenceImages[index] = e.target.result;
+            displayReferenceImages();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function displayReferenceImages() {
+        const container = document.getElementById('reference-images-container');
+        if (!container) return;
+
+        container.innerHTML = state.referenceImages.map((dataUrl, index) => {
+            const isEmpty = !dataUrl;
+            const label = index === 0 ? 'Reference 1 (Required)' : `Reference ${index + 1} (Optional)`;
+
+            if (isEmpty) {
+                return `
+                    <div class="reference-slot" id="reference-slot-${index}" data-index="${index}">
+                        <div class="reference-label">${label}</div>
+                        <div class="image-upload-area reference-upload-area" id="reference-area-${index}">
+                            <div class="upload-placeholder">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <p>Drop image or click</p>
+                            </div>
+                        </div>
+                        <input type="file" accept="image/*" style="display: none;" id="reference-input-${index}">
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="reference-slot" id="reference-slot-${index}" data-index="${index}">
+                        <div class="reference-label">${label}</div>
+                        <div class="reference-preview">
+                            <img src="${dataUrl}" class="image-preview" alt="Reference ${index + 1}">
+                            <button class="secondary-btn change-reference-btn" data-index="${index}">Change</button>
+                            ${index > 0 ? `<button class="secondary-btn remove-reference-btn" data-index="${index}">Remove</button>` : ''}
+                        </div>
+                        <input type="file" accept="image/*" style="display: none;" id="reference-input-${index}">
+                    </div>
+                `;
+            }
+        }).join('');
+
+        // Attach event listeners for each slot
+        state.referenceImages.forEach((dataUrl, index) => {
+            const area = document.getElementById(`reference-area-${index}`);
+            const input = document.getElementById(`reference-input-${index}`);
+
+            if (area && input) {
+                // Click to upload
+                area.addEventListener('click', () => input.click());
+                input.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) loadReferenceImage(file, index);
+                });
+
+                // Drag and drop
+                setupDragAndDrop(area, (file) => {
+                    if (file.type.startsWith('image/')) loadReferenceImage(file, index);
+                }, 'image');
+            }
+
+            // Change button
+            const changeBtn = document.querySelector(`.change-reference-btn[data-index="${index}"]`);
+            if (changeBtn) {
+                changeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    input.click();
+                };
+            }
+
+            // Remove button (only for optional slots)
+            const removeBtn = document.querySelector(`.remove-reference-btn[data-index="${index}"]`);
+            if (removeBtn) {
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    state.referenceImages[index] = null;
+                    displayReferenceImages();
+                };
+            }
+        });
+    }
+
 
     function runGeneration() {
         // Validate - use models from current tab
@@ -749,6 +873,10 @@
             showError('Please upload both start and end frames');
             return;
         }
+        if (uploadType === 'reference-images' && !state.referenceImages[0]) {
+            showError('Please upload at least one reference image');
+            return;
+        }
 
         // Prepare input
         const input = {
@@ -765,6 +893,9 @@
             input.end_frame_data = state.endFrameData;
         } else if (state.mode === 'video-upscaling') {
             input.video_data = state.singleVideoData;
+        } else if (state.mode === 'reference-to-video') {
+            // Send only non-null reference images
+            input.reference_images = state.referenceImages.filter(img => img !== null);
         } else if (state.singleImageData) {
             input.image_data = state.singleImageData;
         }
@@ -1007,6 +1138,11 @@
             case 'POST.generator.saveSuccess':
                 console.log('Saved to:', message.path);
                 break;
+
+            case 'POST.generator.droppedFileData':
+                // Handle file data from dragged VSCode file
+                handleDroppedFileData(message.data, message.fileType, message.uploadType);
+                break;
         }
     });
 
@@ -1066,6 +1202,45 @@
             // Update placeholder card status
             if (model && requestId) {
                 updatePlaceholderStatus(model, requestId, 'Processing...');
+            }
+        }
+    }
+
+    function handleDroppedFileData(dataUrl, fileType, uploadType) {
+        console.log('[WebView] Handling dropped file:', fileType, uploadType);
+
+        // Determine current upload mode
+        const currentUploadType = getUploadTypeForMode(state.mode);
+
+        if (currentUploadType === 'single-image' && fileType === 'image') {
+            state.singleImageData = dataUrl;
+            displaySingleImagePreview(dataUrl);
+        } else if (currentUploadType === 'single-video' && fileType === 'video') {
+            state.singleVideoData = dataUrl;
+            displaySingleVideoPreview(dataUrl);
+        } else if (currentUploadType === 'multi-image' && fileType === 'image') {
+            // Add to multi-image collection
+            state.multiImageData.push(dataUrl);
+            displayMultiImagePreview(state.multiImageData);
+        } else if (currentUploadType === 'dual-image' && fileType === 'image') {
+            // For dual upload, add to start frame if empty, otherwise to end frame
+            if (!state.startFrameData) {
+                state.startFrameData = dataUrl;
+                displayFramePreview(startFrameArea, dataUrl, 'Start', () => startFrameInput.click());
+            } else if (!state.endFrameData) {
+                state.endFrameData = dataUrl;
+                displayFramePreview(endFrameArea, dataUrl, 'End', () => endFrameInput.click());
+            } else {
+                // Both are filled, replace start frame
+                state.startFrameData = dataUrl;
+                displayFramePreview(startFrameArea, dataUrl, 'Start', () => startFrameInput.click());
+            }
+        } else if (currentUploadType === 'reference-images' && fileType === 'image') {
+            // Find first empty slot
+            const emptyIndex = state.referenceImages.findIndex(img => img === null);
+            if (emptyIndex !== -1) {
+                state.referenceImages[emptyIndex] = dataUrl;
+                displayReferenceImages();
             }
         }
     }

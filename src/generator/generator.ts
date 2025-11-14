@@ -215,6 +215,10 @@ class AIGeneratorWebview {
                     cost: 0
                 });
                 break;
+
+            case 'POST.generator.readDroppedFile':
+                await this.handleReadDroppedFile(message, webview);
+                break;
         }
     }
 
@@ -388,7 +392,7 @@ class AIGeneratorWebview {
 
         // Handle image uploads for various modes
         if (mode === 'image-to-video' || mode === 'edit-image' || mode === 'image-upscaling' ||
-            mode === 'remove-background' || mode === 'reference-to-video') {
+            mode === 'remove-background') {
             if (input.image_data) {
                 webview.postMessage({
                     command: 'POST.generator.statusUpdate',
@@ -402,6 +406,23 @@ class AIGeneratorWebview {
                 prepared.image_url = imageUrl;
                 delete prepared.image_data;
             }
+        }
+
+        // Handle reference images upload (1-3 images for reference-to-video)
+        if (mode === 'reference-to-video' && input.reference_images) {
+            webview.postMessage({
+                command: 'POST.generator.statusUpdate',
+                requestId,
+                status: 'uploading'
+            });
+
+            const uploadPromises = input.reference_images.map((data: string) => {
+                const blob = this.base64ToBlob(data);
+                return this.falClient.uploadFile(blob);
+            });
+
+            prepared.reference_images_urls = await Promise.all(uploadPromises);
+            delete prepared.reference_images;
         }
 
         // Handle dual frame upload
@@ -456,8 +477,8 @@ class AIGeneratorWebview {
     }
 
     private base64ToBlob(base64: string): any {
-        // Remove data URL prefix if present
-        const base64Data = base64.replace(/^data:image\/\w+;base64,/, '');
+        // Remove data URL prefix if present (supports both image and video)
+        const base64Data = base64.replace(/^data:(image|video)\/\w+;base64,/, '');
         const binary = Buffer.from(base64Data, 'base64').toString('binary');
         const array = new Uint8Array(binary.length);
 
@@ -599,6 +620,86 @@ class AIGeneratorWebview {
         }
     }
 
+    private async handleReadDroppedFile(message: any, webview: vscode.Webview) {
+        try {
+            const { uri, fileType } = message;
+            console.log(`[AI Generator] Reading dropped file: ${uri}, type: ${fileType}`);
+
+            // Parse URI - VSCode sends it in various formats
+            let fileUri: vscode.Uri;
+            try {
+                fileUri = vscode.Uri.parse(uri);
+            } catch (e) {
+                console.error('[AI Generator] Failed to parse URI:', uri, e);
+                return;
+            }
+
+            // Check if file exists
+            try {
+                await vscode.workspace.fs.stat(fileUri);
+            } catch (e) {
+                console.error('[AI Generator] File does not exist:', fileUri.fsPath);
+                vscode.window.showWarningMessage(`File not found: ${fileUri.fsPath}`);
+                return;
+            }
+
+            // Get file extension to verify type
+            const ext = path.extname(fileUri.fsPath).toLowerCase();
+            const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.avif'];
+            const videoExts = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+
+            // Validate file type
+            if (fileType === 'image' && !imageExts.includes(ext)) {
+                vscode.window.showWarningMessage(`Not an image file: ${fileUri.fsPath}`);
+                return;
+            }
+            if (fileType === 'video' && !videoExts.includes(ext)) {
+                vscode.window.showWarningMessage(`Not a video file: ${fileUri.fsPath}`);
+                return;
+            }
+
+            // Read file
+            const fileData = await vscode.workspace.fs.readFile(fileUri);
+
+            // Convert to base64 data URL
+            const base64 = Buffer.from(fileData).toString('base64');
+            const mimeType = this.getMimeType(ext);
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+
+            // Send back to webview
+            webview.postMessage({
+                command: 'POST.generator.droppedFileData',
+                data: dataUrl,
+                fileType: fileType
+            });
+
+            console.log(`[AI Generator] File read successfully: ${fileUri.fsPath} (${fileData.length} bytes)`);
+        } catch (error) {
+            console.error('[AI Generator] Error reading dropped file:', error);
+            vscode.window.showErrorMessage(
+                `Failed to read file: ${(error as Error).message}`
+            );
+        }
+    }
+
+    private getMimeType(ext: string): string {
+        const mimeTypes: { [key: string]: string } = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.bmp': 'image/bmp',
+            '.webp': 'image/webp',
+            '.avif': 'image/avif',
+            '.mp4': 'video/mp4',
+            '.webm': 'video/webm',
+            '.ogg': 'video/ogg',
+            '.mov': 'video/quicktime',
+            '.avi': 'video/x-msvideo',
+            '.mkv': 'video/x-matroska'
+        };
+        return mimeTypes[ext.toLowerCase()] || 'application/octet-stream';
+    }
 
     private getHtmlForWebview(webview: vscode.Webview): string {
         const scriptUri = webview.asWebviewUri(
@@ -762,6 +863,11 @@ class AIGeneratorWebview {
                 </div>
                 <input type="file" id="start-frame-input" accept="image/*" style="display:none;">
                 <input type="file" id="end-frame-input" accept="image/*" style="display:none;">
+            </div>
+
+            <div id="reference-images-upload" class="form-section" style="display:none;">
+                <label>Reference Images (1-3)</label>
+                <div id="reference-images-container"></div>
             </div>
 
             <div id="video-duration-section" class="form-section" style="display:none;">
