@@ -92,8 +92,17 @@
         // Mode selection
         modeSelect.addEventListener('change', (e) => {
             state.mode = e.target.value;
+
+            // Clear selected models when changing mode
+            if (state.currentTab === 'image') {
+                state.selectedImageModels = [];
+            } else {
+                state.selectedVideoModels = [];
+            }
+
             updateUIForMode();
             updateTabForMode();
+            updateSelectedModelsUI();
         });
 
         // Add model button
