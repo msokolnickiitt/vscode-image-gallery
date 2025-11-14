@@ -7,7 +7,8 @@
     let state = {
         currentTab: 'image',
         mode: 'text-to-image',
-        selectedModels: [],
+        selectedImageModels: [],
+        selectedVideoModels: [],
         modelSets: [],
         searchResults: [],
         history: [],
@@ -101,7 +102,11 @@
 
         // Clear models button
         clearModelsBtn.addEventListener('click', () => {
-            state.selectedModels = [];
+            if (state.currentTab === 'image') {
+                state.selectedImageModels = [];
+            } else {
+                state.selectedVideoModels = [];
+            }
             updateSelectedModelsUI();
         });
 
@@ -267,6 +272,7 @@
         }
 
         updateUIForMode();
+        updateSelectedModelsUI(); // Update models list when tab changes
     }
 
     function updateTabForMode() {
@@ -396,9 +402,23 @@
         });
     }
 
+    function getSelectedModels() {
+        return state.currentTab === 'image' ? state.selectedImageModels : state.selectedVideoModels;
+    }
+
+    function setSelectedModels(models) {
+        if (state.currentTab === 'image') {
+            state.selectedImageModels = models;
+        } else {
+            state.selectedVideoModels = models;
+        }
+    }
+
     function addModel(model) {
-        if (!state.selectedModels.find(m => m === model.endpoint_id)) {
-            state.selectedModels.push(model.endpoint_id);
+        const selectedModels = getSelectedModels();
+        if (!selectedModels.find(m => m === model.endpoint_id)) {
+            selectedModels.push(model.endpoint_id);
+            setSelectedModels(selectedModels);
             updateSelectedModelsUI();
         }
         modelSearchResults.style.display = 'none';
@@ -407,13 +427,17 @@
     }
 
     function removeModel(endpointId) {
-        state.selectedModels = state.selectedModels.filter(m => m !== endpointId);
+        const selectedModels = getSelectedModels();
+        const filtered = selectedModels.filter(m => m !== endpointId);
+        setSelectedModels(filtered);
         updateSelectedModelsUI();
     }
 
     function updateSelectedModelsUI() {
+        const selectedModels = getSelectedModels();
+        const count = selectedModels.length;
+
         // Update count
-        const count = state.selectedModels.length;
         modelCount.textContent = `${count} model${count !== 1 ? 's' : ''} selected`;
 
         // Show/hide clear button
@@ -424,7 +448,7 @@
             return;
         }
 
-        selectedModelsList.innerHTML = state.selectedModels.map((endpointId, index) => {
+        selectedModelsList.innerHTML = selectedModels.map((endpointId, index) => {
             return `
                 <div class="model-list-item">
                     <input type="checkbox" checked disabled class="model-checkbox">
@@ -493,7 +517,7 @@
             const setId = selectedCard.dataset.setId;
             const modelSet = state.modelSets.find(s => s.id === setId);
             if (modelSet) {
-                state.selectedModels = [...modelSet.models];
+                setSelectedModels([...modelSet.models]);
                 updateSelectedModelsUI();
             }
         }
@@ -693,8 +717,9 @@
 
 
     function runGeneration() {
-        // Validate
-        if (state.selectedModels.length === 0) {
+        // Validate - use models from current tab
+        const selectedModels = getSelectedModels();
+        if (selectedModels.length === 0) {
             showError('Please select at least one model');
             return;
         }
@@ -755,7 +780,7 @@
         vscode.postMessage({
             command: 'POST.generator.generate',
             mode: state.mode,
-            models: state.selectedModels,
+            models: selectedModels,
             input,
             requestId
         });
