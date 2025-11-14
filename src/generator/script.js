@@ -267,11 +267,14 @@
         // Show/hide other sections based on mode
         const needsPrompt = !['remove-background'].includes(mode);
         const needsDuration = ['image-to-video', 'text-to-video', 'start-end-frame', 'reference-to-video'].includes(mode);
-        const needsAspectRatio = ['text-to-image', 'edit-image'].includes(mode);
+        const needsAspectRatio = ['text-to-image', 'edit-image', 'text-to-video', 'image-to-video', 'start-end-frame', 'reference-to-video'].includes(mode);
 
         promptSection.style.display = needsPrompt ? 'flex' : 'none';
         videoDurationSection.style.display = needsDuration ? 'flex' : 'none';
         aspectRatioSection.style.display = needsAspectRatio ? 'flex' : 'none';
+
+        // Update aspect ratio options based on mode type
+        updateAspectRatioOptions(mode);
 
         // Update prompt placeholder based on mode
         const placeholders = {
@@ -298,6 +301,52 @@
             'reference-to-video': 'single-image'
         };
         return uploadMap[mode] || 'none';
+    }
+
+    function updateAspectRatioOptions(mode) {
+        const videoModes = ['text-to-video', 'image-to-video', 'start-end-frame', 'reference-to-video'];
+        const isVideoMode = videoModes.includes(mode);
+
+        // Get all ratio buttons
+        const ratioButtons = document.querySelectorAll('.ratio-btn');
+
+        if (isVideoMode) {
+            // For video: show only 1:1, 16:9, 9:16
+            const videoRatios = ['default', 'square', 'landscape_16_9', 'portrait_16_9'];
+            ratioButtons.forEach(btn => {
+                const ratio = btn.dataset.ratio;
+                if (videoRatios.includes(ratio)) {
+                    btn.style.display = '';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+
+            // Update labels for video
+            ratioButtons.forEach(btn => {
+                const ratio = btn.dataset.ratio;
+                if (ratio === 'square') btn.textContent = '1:1';
+                else if (ratio === 'landscape_16_9') btn.textContent = '16:9';
+                else if (ratio === 'portrait_16_9') btn.textContent = '9:16';
+                else if (ratio === 'default') btn.textContent = 'Auto';
+            });
+        } else {
+            // For images: show all options
+            ratioButtons.forEach(btn => {
+                btn.style.display = '';
+            });
+
+            // Restore original labels for images
+            ratioButtons.forEach(btn => {
+                const ratio = btn.dataset.ratio;
+                if (ratio === 'default') btn.textContent = 'Auto';
+                else if (ratio === 'square') btn.textContent = '1:1';
+                else if (ratio === 'landscape_4_3') btn.textContent = '4:3';
+                else if (ratio === 'portrait_4_3') btn.textContent = '3:4';
+                else if (ratio === 'landscape_16_9') btn.textContent = '16:9';
+                else if (ratio === 'portrait_16_9') btn.textContent = '9:16';
+            });
+        }
     }
 
     function searchModels(query) {
