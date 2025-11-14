@@ -128,11 +128,13 @@
         multiImageArea.addEventListener('click', () => multiImageInput.click());
         multiImageInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
-            if (files.length > 0) loadMultiImages(files);
+            if (files.length > 0) loadMultiImages(files, false);
+            // Reset input to allow selecting the same files again
+            e.target.value = '';
         });
         setupDragAndDrop(multiImageArea, (file, files) => {
             const imageFiles = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [file];
-            if (imageFiles.length > 0) loadMultiImages(imageFiles);
+            if (imageFiles.length > 0) loadMultiImages(imageFiles, false);
         });
 
         // Dual Image Upload (Start/End Frame)
@@ -427,9 +429,16 @@
             <img src="${dataUrl}" class="image-preview" alt="Uploaded image">
             <button class="secondary-btn" style="margin-top: 12px;" id="change-single-image-btn">Change</button>
         `;
-        document.getElementById('change-single-image-btn').addEventListener('click', () => {
-            singleImageInput.click();
-        });
+        // Use setTimeout to ensure button is in DOM before attaching listener
+        setTimeout(() => {
+            const changeBtn = document.getElementById('change-single-image-btn');
+            if (changeBtn) {
+                changeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    singleImageInput.click();
+                };
+            }
+        }, 0);
     }
 
     // Single Video Upload
@@ -447,13 +456,19 @@
             <video src="${dataUrl}" class="video-preview" controls style="max-width: 100%; max-height: 200px; border-radius: 4px;"></video>
             <button class="secondary-btn" style="margin-top: 12px;" id="change-single-video-btn">Change</button>
         `;
-        document.getElementById('change-single-video-btn').addEventListener('click', () => {
-            singleVideoInput.click();
-        });
+        setTimeout(() => {
+            const changeBtn = document.getElementById('change-single-video-btn');
+            if (changeBtn) {
+                changeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    singleVideoInput.click();
+                };
+            }
+        }, 0);
     }
 
     // Multi Image Upload
-    function loadMultiImages(files) {
+    function loadMultiImages(files, append = false) {
         const loadPromises = files.map(file => {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -463,8 +478,14 @@
         });
 
         Promise.all(loadPromises).then(dataUrls => {
-            state.multiImageData = dataUrls;
-            displayMultiImagePreview(dataUrls);
+            if (append) {
+                // Add to existing images
+                state.multiImageData = [...state.multiImageData, ...dataUrls];
+            } else {
+                // Replace all images
+                state.multiImageData = dataUrls;
+            }
+            displayMultiImagePreview(state.multiImageData);
         });
     }
 
@@ -488,7 +509,8 @@
 
         // Attach remove listeners
         multiImagePreview.querySelectorAll('.remove-multi-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const index = parseInt(btn.dataset.index);
                 state.multiImageData.splice(index, 1);
                 if (state.multiImageData.length === 0) {
@@ -500,10 +522,30 @@
             });
         });
 
-        // Add more button
-        document.getElementById('add-more-images').addEventListener('click', () => {
-            multiImageInput.click();
-        });
+        // Add more button - use one-time event listener to avoid duplicates
+        const addMoreBtn = document.getElementById('add-more-images');
+        if (addMoreBtn) {
+            addMoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Create a temporary input for adding more images
+                const tempInput = document.createElement('input');
+                tempInput.type = 'file';
+                tempInput.accept = 'image/*';
+                tempInput.multiple = true;
+                tempInput.style.display = 'none';
+
+                tempInput.addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        loadMultiImages(files, true); // append = true
+                    }
+                    tempInput.remove();
+                });
+
+                document.body.appendChild(tempInput);
+                tempInput.click();
+            });
+        }
     }
 
     // Start Frame Upload
@@ -529,9 +571,17 @@
     function displayFramePreview(area, dataUrl, label, onClick) {
         area.innerHTML = `
             <img src="${dataUrl}" class="image-preview" alt="${label} frame" style="max-height: 120px;">
-            <button class="secondary-btn" style="margin-top: 8px; font-size: 10px; padding: 4px 8px;">Change</button>
+            <button class="secondary-btn change-frame-btn" style="margin-top: 8px; font-size: 10px; padding: 4px 8px;">Change</button>
         `;
-        area.querySelector('button').addEventListener('click', onClick);
+        setTimeout(() => {
+            const changeBtn = area.querySelector('.change-frame-btn');
+            if (changeBtn) {
+                changeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    onClick();
+                };
+            }
+        }, 0);
     }
 
 
