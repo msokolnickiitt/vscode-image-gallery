@@ -776,6 +776,12 @@
         runBtn.disabled = true;
         runBtn.innerHTML = '<span class="spinner"></span> Generating...';
 
+        // Create placeholder cards for each model immediately
+        const isVideo = ['text-to-video', 'image-to-video', 'start-end-frame', 'reference-to-video'].includes(state.mode);
+        selectedModels.forEach(modelId => {
+            addPlaceholderCard(modelId, isVideo, requestId);
+        });
+
         // Send generation request
         vscode.postMessage({
             command: 'POST.generator.generate',
@@ -797,7 +803,45 @@
         }, 5000);
     }
 
-    function addResultToGrid(result) {
+    function addPlaceholderCard(modelId, isVideo, requestId) {
+        const cardId = `result-${requestId}-${modelId.replace(/\//g, '-')}`;
+
+        const card = document.createElement('div');
+        card.className = 'result-card result-card-loading';
+        card.id = cardId;
+        card.innerHTML = `
+            <div class="result-placeholder">
+                <div class="placeholder-content">
+                    ${isVideo ?
+                        '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' :
+                        '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+                    }
+                    <div class="spinner" style="margin-top: 12px;"></div>
+                    <p style="margin-top: 12px; font-size: 11px; color: var(--text-secondary);">Generating...</p>
+                </div>
+            </div>
+            <div class="result-card-info">
+                <div class="model-name">${formatModelName(modelId)}</div>
+                <div class="dimensions" style="color: var(--text-secondary);">In queue...</div>
+            </div>
+        `;
+
+        resultsGrid.prepend(card);
+        return cardId;
+    }
+
+    function updatePlaceholderStatus(modelId, requestId, status) {
+        const cardId = `result-${requestId}-${modelId.replace(/\//g, '-')}`;
+        const card = document.getElementById(cardId);
+        if (card) {
+            const dimensionsEl = card.querySelector('.dimensions');
+            if (dimensionsEl) {
+                dimensionsEl.textContent = status;
+            }
+        }
+    }
+
+    function addResultToGrid(result, requestId) {
         const isVideo = result.type === 'video';
         const mediaTag = isVideo
             ? `<video src="${result.url}" controls></video>`
@@ -807,21 +851,42 @@
             ? `${result.width} × ${result.height}`
             : '';
 
-        const card = document.createElement('div');
-        card.className = 'result-card';
-        card.innerHTML = `
-            ${mediaTag}
-            <div class="result-card-info">
-                <div class="model-name">${formatModelName(result.model)}</div>
-                ${dimensions ? `<div class="dimensions">${dimensions}</div>` : ''}
-            </div>
-            <div class="result-card-actions">
-                <button class="secondary-btn save-btn" data-url="${result.url}" data-type="${result.type}">Save</button>
-                <button class="secondary-btn view-btn" data-url="${result.url}">View</button>
-            </div>
-        `;
+        // Check if placeholder exists
+        const cardId = `result-${requestId}-${result.model.replace(/\//g, '-')}`;
+        let card = document.getElementById(cardId);
 
-        resultsGrid.prepend(card);
+        if (card) {
+            // Update existing placeholder
+            card.className = 'result-card';
+            card.innerHTML = `
+                ${mediaTag}
+                <div class="result-card-info">
+                    <div class="model-name">${formatModelName(result.model)}</div>
+                    ${dimensions ? `<div class="dimensions">${dimensions}</div>` : ''}
+                </div>
+                <div class="result-card-actions">
+                    <button class="secondary-btn save-btn" data-url="${result.url}" data-type="${result.type}">Save</button>
+                    <button class="secondary-btn view-btn" data-url="${result.url}">View</button>
+                </div>
+            `;
+        } else {
+            // Create new card (fallback)
+            card = document.createElement('div');
+            card.className = 'result-card';
+            card.id = cardId;
+            card.innerHTML = `
+                ${mediaTag}
+                <div class="result-card-info">
+                    <div class="model-name">${formatModelName(result.model)}</div>
+                    ${dimensions ? `<div class="dimensions">${dimensions}</div>` : ''}
+                </div>
+                <div class="result-card-actions">
+                    <button class="secondary-btn save-btn" data-url="${result.url}" data-type="${result.type}">Save</button>
+                    <button class="secondary-btn view-btn" data-url="${result.url}">View</button>
+                </div>
+            `;
+            resultsGrid.prepend(card);
+        }
 
         // Attach action listeners
         card.querySelector('.save-btn').addEventListener('click', (e) => {
@@ -909,14 +974,21 @@
 
             case 'POST.generator.enqueued':
                 console.log('Enqueued:', message.model);
+                if (message.requestId && message.model) {
+                    updatePlaceholderStatus(message.model, message.requestId, 'Enqueued');
+                }
                 break;
 
             case 'POST.generator.queueUpdate':
-                handleQueueUpdate(message.update);
+                if (message.requestId && message.model) {
+                    handleQueueUpdate(message.update, message.model, message.requestId);
+                }
                 break;
 
             case 'POST.generator.resultReady':
-                message.results.forEach(result => addResultToGrid(result));
+                message.results.forEach(result => {
+                    addResultToGrid(result, message.requestId);
+                });
                 break;
 
             case 'POST.generator.allCompleted':
@@ -981,11 +1053,20 @@
         console.log('[WebView] modelSearchResults display set to block');
     }
 
-    function handleQueueUpdate(update) {
+    function handleQueueUpdate(update, model, requestId) {
+        // Update button status
         if (update.status === 'IN_QUEUE') {
             runBtn.innerHTML = `<span class="spinner"></span> Queue position: ${update.queue_position || '?'}`;
+            // Update placeholder card status
+            if (model && requestId) {
+                updatePlaceholderStatus(model, requestId, `Queue position: ${update.queue_position || '?'}`);
+            }
         } else if (update.status === 'IN_PROGRESS') {
             runBtn.innerHTML = '<span class="spinner"></span> Processing...';
+            // Update placeholder card status
+            if (model && requestId) {
+                updatePlaceholderStatus(model, requestId, 'Processing...');
+            }
         }
     }
 

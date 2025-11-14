@@ -697,6 +697,33 @@ button {
     transform: translateY(-2px);
 }
 
+.result-card-loading {
+    background: var(--bg-sidebar);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.result-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    background: var(--input-bg);
+}
+
+.placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+.placeholder-content svg {
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+
 .result-card img,
 .result-card video {
     width: 100%;

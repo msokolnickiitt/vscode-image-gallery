@@ -36,11 +36,13 @@ export const DEFAULT_MODELS: Record<GenerationMode, string[]> = {
     'text-to-image': ['fal-ai/flux/dev'],
     'edit-image': ['fal-ai/flux/dev'],
     'edit-multi-images': ['fal-ai/flux/dev'],
-    'upscaling': ['fal-ai/crystal-upscaler'],
+    'image-upscaling': ['fal-ai/crystal-upscaler'],
     'remove-background': ['bria/rmbg-1.4'],
     'text-to-video': ['fal-ai/veo-3.1'],
     'image-to-video': ['fal-ai/kling-video/v1.6/standard/image-to-video'],
-    'start-end-frame': ['fal-ai/kling-video/v1.6/standard/image-to-video']
+    'start-end-frame': ['fal-ai/kling-video/v1.6/standard/image-to-video'],
+    'video-upscaling': ['fal-ai/crystal-upscaler'],
+    'reference-to-video': ['fal-ai/kling-video/v1.6/standard/image-to-video']
 };
 
 /**
@@ -210,11 +212,13 @@ export function isModelSuitableForMode(modelCategory: string, mode: GenerationMo
         'text-to-image': ['text-to-image'],
         'edit-image': ['text-to-image', 'image-to-image'],
         'edit-multi-images': ['text-to-image', 'image-to-image'],
-        'upscaling': ['image-upscaling'],
+        'image-upscaling': ['image-upscaling'],
         'remove-background': ['background-removal'],
         'text-to-video': ['text-to-video'],
         'image-to-video': ['image-to-video'],
-        'start-end-frame': ['image-to-video']
+        'start-end-frame': ['image-to-video'],
+        'video-upscaling': ['video-upscaling'],
+        'reference-to-video': ['image-to-video']
     };
 
     const acceptedCategories = categoryMap[mode] || [];
