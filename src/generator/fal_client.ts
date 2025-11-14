@@ -87,7 +87,16 @@ export class FalClient {
         try {
             const response = await fetchFn(url);
             const blob = await response.blob();
-            return await this.uploadFile(blob, expirationDays);
+
+            // Extract filename from URL and content-type from response
+            const contentType = response.headers.get('content-type') || blob.type || 'application/octet-stream';
+            const urlPath = new URL(url).pathname;
+            const filename = urlPath.split('/').pop() || `download_${Date.now()}`;
+
+            // Create File object with proper MIME type to preserve extension
+            const file = new (globalThis as any).File([blob], filename, { type: contentType });
+
+            return await this.uploadFile(file, expirationDays);
         } catch (error) {
             console.error('Upload from URL failed:', error);
             throw new Error(`Failed to upload from URL: ${(error as Error).message}`);

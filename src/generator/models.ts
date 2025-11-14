@@ -271,3 +271,24 @@ export function searchModelsLocally(models: FalModel[], query: string): FalModel
         model.metadata.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
     );
 }
+
+/**
+ * Get API category for a generation mode
+ * Maps internal GenerationMode to fal.ai API category for model search
+ */
+export function getCategoryForMode(mode: GenerationMode): string {
+    const categoryMap: Record<GenerationMode, string> = {
+        'text-to-image': 'text-to-image',
+        'edit-image': 'image-to-image',
+        'edit-multi-images': 'image-to-image',
+        'remove-background': 'image-to-image',
+        'image-upscaling': 'image-to-image',
+        'text-to-video': 'text-to-video',
+        'image-to-video': 'image-to-video',
+        'start-end-frame': 'image-to-video',
+        'video-upscaling': 'video-to-video',
+        'reference-to-video': 'image-to-video'
+    };
+
+    return categoryMap[mode] || 'text-to-image';
+}

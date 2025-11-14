@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { FalClient } from './fal_client';
-import { MODEL_SETS, getDefaultModels, getModelDisplayName } from './models';
+import { MODEL_SETS, getDefaultModels, getModelDisplayName, getCategoryForMode } from './models';
 import { reporter } from '../telemetry';
 import * as utils from '../utils';
 import type {
@@ -289,7 +289,7 @@ class AIGeneratorWebview {
                 });
 
                 // Prepare input based on mode
-                const preparedInput = await this.prepareInput(mode, input, webview, requestId);
+                const preparedInput = await this.prepareInput(mode, input, webview, requestId, model);
 
                 // Generate
                 const result = await this.falClient.generate(
@@ -386,7 +386,8 @@ class AIGeneratorWebview {
         mode: GenerationMode,
         input: any,
         webview: vscode.Webview,
-        requestId: string
+        requestId: string,
+        model?: string
     ): Promise<any> {
         const prepared = { ...input };
 
@@ -403,7 +404,21 @@ class AIGeneratorWebview {
                 // Convert base64 to blob and upload
                 const imageBlob = this.base64ToBlob(input.image_data);
                 const imageUrl = await this.falClient.uploadFile(imageBlob);
-                prepared.image_url = imageUrl;
+
+                // Determine which parameter format to use based on model
+                // Models that expect image_urls (array): nano-banana, gemini-25-flash-image
+                const useArrayFormat = model && (
+                    model.includes('nano-banana') ||
+                    model.includes('gemini-25-flash-image') ||
+                    model.includes('/edit')  // Most /edit endpoints use array format
+                );
+
+                if (useArrayFormat) {
+                    prepared.image_urls = [imageUrl];
+                } else {
+                    prepared.image_url = imageUrl;
+                }
+
                 delete prepared.image_data;
             }
         }
@@ -421,7 +436,7 @@ class AIGeneratorWebview {
                 return this.falClient.uploadFile(blob);
             });
 
-            prepared.reference_images_urls = await Promise.all(uploadPromises);
+            prepared.reference_image_urls = await Promise.all(uploadPromises);
             delete prepared.reference_images;
         }
 
@@ -436,14 +451,14 @@ class AIGeneratorWebview {
 
                 const startBlob = this.base64ToBlob(input.start_frame_data);
                 const startUrl = await this.falClient.uploadFile(startBlob);
-                prepared.start_frame_url = startUrl;
+                prepared.start_image_url = startUrl;
                 delete prepared.start_frame_data;
             }
 
             if (input.end_frame_data) {
                 const endBlob = this.base64ToBlob(input.end_frame_data);
                 const endUrl = await this.falClient.uploadFile(endBlob);
-                prepared.end_frame_url = endUrl;
+                prepared.end_image_url = endUrl;
                 delete prepared.end_frame_data;
             }
         }
@@ -469,7 +484,8 @@ class AIGeneratorWebview {
                 return this.falClient.uploadFile(blob);
             });
 
-            prepared.images_urls = await Promise.all(uploadPromises);
+            // Most models expect image_urls (not images_urls)
+            prepared.image_urls = await Promise.all(uploadPromises);
             delete prepared.images_data;
         }
 
@@ -477,6 +493,10 @@ class AIGeneratorWebview {
     }
 
     private base64ToBlob(base64: string): any {
+        // Extract MIME type from data URL
+        const mimeMatch = base64.match(/^data:([^;]+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+
         // Remove data URL prefix if present (supports both image and video)
         const base64Data = base64.replace(/^data:(image|video)\/\w+;base64,/, '');
         const binary = Buffer.from(base64Data, 'base64').toString('binary');
@@ -486,8 +506,25 @@ class AIGeneratorWebview {
             array[i] = binary.charCodeAt(i);
         }
 
-        // Return as Blob-like object for fal.ai upload
-        return array.buffer;
+        // Determine file extension from MIME type
+        const extMap: { [key: string]: string } = {
+            'image/png': 'png',
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/webp': 'webp',
+            'image/gif': 'gif',
+            'image/avif': 'avif',
+            'video/mp4': 'mp4',
+            'video/webm': 'webm',
+            'video/quicktime': 'mov'
+        };
+        const ext = extMap[mimeType] || 'bin';
+        const filename = `upload_${Date.now()}.${ext}`;
+
+        // Create a proper File object with MIME type
+        // This ensures fal.ai receives the correct content-type
+        const file = new (globalThis as any).File([array.buffer], filename, { type: mimeType });
+        return file;
     }
 
     private async handleUploadImage(message: any, webview: vscode.Webview) {
@@ -511,8 +548,12 @@ class AIGeneratorWebview {
 
     private async handleSearchModels(message: any, webview: vscode.Webview) {
         try {
-            const { query, category } = message;
-            console.log(`[AI Generator] handleSearchModels: query="${query}", category="${category}"`);
+            const { query, mode } = message;
+
+            // Map mode to API category
+            const category = getCategoryForMode(mode as GenerationMode);
+
+            console.log(`[AI Generator] handleSearchModels: query="${query}", mode="${mode}", category="${category}"`);
 
             const models = await this.falClient.searchModels({
                 query,

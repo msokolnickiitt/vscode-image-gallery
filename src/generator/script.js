@@ -400,12 +400,10 @@
     }
 
     function searchModels(query) {
-        const category = state.currentTab === 'image' ? 'text-to-image' : 'text-to-video';
-
         vscode.postMessage({
             command: 'POST.generator.searchModels',
             query,
-            category
+            mode: state.mode
         });
     }
 
@@ -880,10 +878,20 @@
 
         // Prepare input
         const input = {
-            prompt: promptTextarea.value.trim(),
-            image_size: state.aspectRatio !== 'default' ? state.aspectRatio : undefined,
-            duration: state.duration
+            prompt: promptTextarea.value.trim()
         };
+
+        // Add aspect ratio for modes that support it
+        const aspectRatioModes = ['text-to-image', 'edit-image', 'text-to-video', 'image-to-video', 'start-end-frame', 'reference-to-video'];
+        if (aspectRatioModes.includes(state.mode) && state.aspectRatio !== 'default') {
+            input.image_size = state.aspectRatio;
+        }
+
+        // Add duration only for video generation modes
+        const videoModes = ['text-to-video', 'image-to-video', 'start-end-frame', 'reference-to-video'];
+        if (videoModes.includes(state.mode)) {
+            input.duration = state.duration;
+        }
 
         // Add upload data based on mode
         if (state.mode === 'edit-multi-images') {
