@@ -485,8 +485,23 @@
     }
 
     function formatModelName(endpointId) {
-        return endpointId.split('/').pop().split('-').map(w =>
-            w.charAt(0).toUpperCase() + w.slice(1)
+        // Remove provider prefix (fal-ai/, smoretalk-ai/, etc.)
+        const parts = endpointId.split('/');
+        const withoutProvider = parts.slice(1).join('/');
+
+        // If it's still long, show last 2-3 meaningful parts
+        const relevantParts = withoutProvider.split('/').filter(p =>
+            p && !p.match(/^v?\d+(\.\d+)*$/) // Skip pure version numbers
+        );
+
+        // Take last 2 parts or all if shorter
+        const displayParts = relevantParts.length > 2
+            ? relevantParts.slice(-2)
+            : relevantParts;
+
+        // Format each part: capitalize words, replace hyphens with spaces
+        return displayParts.map(part =>
+            part.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
         ).join(' ');
     }
 
