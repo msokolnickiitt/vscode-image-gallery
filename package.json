@@ -37,6 +37,7 @@
 		"onCustomEditor:gryc.editor"
 	],
 	"main": "./dist/extension.js",
+	"browser": "./dist/extension.js",
 	"contributes": {
 		"configuration": {
 			"title": "Image & Video Gallery",
@@ -158,7 +159,7 @@
 		"@typescript-eslint/eslint-plugin": "^5.16.0",
 		"@typescript-eslint/parser": "^5.16.0",
 		"@vscode/test-electron": "^2.1.3",
-		"@vscode/test-web": "^0.0.24",
+		"@vscode/test-web": "^0.0.75",
 		"chai": "^4.3.3",
 		"eslint": "^8.11.0",
 		"glob": "^7.2.0",
