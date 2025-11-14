@@ -657,12 +657,21 @@ class AIGeneratorWebview {
             </div>
 
             <div class="form-section">
-                <label>Models</label>
+                <div class="model-section-header">
+                    <label>Model Selection</label>
+                    <div class="model-header-actions">
+                        <span id="model-count" class="model-count">0 models selected</span>
+                        <button id="clear-models-btn" class="link-btn" style="display:none;">Clear</button>
+                    </div>
+                </div>
                 <div class="model-selection">
-                    <div class="selected-models" id="selected-models"></div>
-                    <div class="model-actions">
-                        <input type="text" id="model-search" placeholder="Search..." class="search-input">
-                        <button id="explore-sets-btn" class="secondary-btn">Sets</button>
+                    <div class="selected-models-list" id="selected-models-list"></div>
+                    <button id="add-model-btn" class="add-model-btn">
+                        <span>+</span> Add another model
+                    </button>
+                    <div class="model-actions" id="model-actions" style="display:none;">
+                        <input type="text" id="model-search" placeholder="Search models..." class="search-input">
+                        <button id="explore-sets-btn" class="secondary-btn">Explore Sets</button>
                     </div>
                     <div id="model-search-results" class="model-list" style="display:none;"></div>
                 </div>

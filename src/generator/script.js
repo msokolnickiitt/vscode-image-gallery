@@ -31,7 +31,11 @@
     const aspectRatioSection = document.getElementById('aspect-ratio-section');
     const modelSearchInput = document.getElementById('model-search');
     const modelSearchResults = document.getElementById('model-search-results');
-    const selectedModelsContainer = document.getElementById('selected-models');
+    const selectedModelsList = document.getElementById('selected-models-list');
+    const modelCount = document.getElementById('model-count');
+    const clearModelsBtn = document.getElementById('clear-models-btn');
+    const addModelBtn = document.getElementById('add-model-btn');
+    const modelActions = document.getElementById('model-actions');
     const exploreSetsBtn = document.getElementById('explore-sets-btn');
     const runBtn = document.getElementById('run-btn');
     const resultsGrid = document.getElementById('results-grid');
@@ -87,6 +91,18 @@
             state.mode = e.target.value;
             updateUIForMode();
             updateTabForMode();
+        });
+
+        // Add model button
+        addModelBtn.addEventListener('click', () => {
+            modelActions.style.display = 'flex';
+            modelSearchInput.focus();
+        });
+
+        // Clear models button
+        clearModelsBtn.addEventListener('click', () => {
+            state.selectedModels = [];
+            updateSelectedModelsUI();
         });
 
         // Model search
@@ -184,6 +200,27 @@
             if (e.ctrlKey && e.key === 'Enter') {
                 e.preventDefault();
                 runGeneration();
+            }
+            // Close model search on Escape
+            if (e.key === 'Escape') {
+                if (modelActions.style.display !== 'none') {
+                    modelActions.style.display = 'none';
+                    modelSearchResults.style.display = 'none';
+                    modelSearchInput.value = '';
+                }
+            }
+        });
+
+        // Close model search when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!modelActions.contains(e.target) &&
+                !addModelBtn.contains(e.target) &&
+                !modelSearchResults.contains(e.target)) {
+                if (modelActions.style.display !== 'none') {
+                    modelActions.style.display = 'none';
+                    modelSearchResults.style.display = 'none';
+                    modelSearchInput.value = '';
+                }
             }
         });
 
@@ -366,6 +403,7 @@
         }
         modelSearchResults.style.display = 'none';
         modelSearchInput.value = '';
+        modelActions.style.display = 'none';
     }
 
     function removeModel(endpointId) {
@@ -374,25 +412,45 @@
     }
 
     function updateSelectedModelsUI() {
-        if (state.selectedModels.length === 0) {
-            selectedModelsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 13px;">No models selected</span>';
+        // Update count
+        const count = state.selectedModels.length;
+        modelCount.textContent = `${count} model${count !== 1 ? 's' : ''} selected`;
+
+        // Show/hide clear button
+        clearModelsBtn.style.display = count > 0 ? 'inline-block' : 'none';
+
+        if (count === 0) {
+            selectedModelsList.innerHTML = '';
             return;
         }
 
-        selectedModelsContainer.innerHTML = state.selectedModels.map(endpointId => {
-            const displayName = formatModelName(endpointId);
+        selectedModelsList.innerHTML = state.selectedModels.map((endpointId, index) => {
             return `
-                <div class="model-chip">
-                    <span>${displayName}</span>
-                    <button class="remove-btn" data-model="${endpointId}">×</button>
+                <div class="model-list-item">
+                    <input type="checkbox" checked disabled class="model-checkbox">
+                    <span class="model-endpoint" title="${endpointId}">${endpointId}</span>
+                    <button class="model-remove-btn" data-model="${endpointId}" title="Remove model">×</button>
                 </div>
             `;
         }).join('');
 
         // Attach remove listeners
-        selectedModelsContainer.querySelectorAll('.remove-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+        selectedModelsList.querySelectorAll('.model-remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 removeModel(btn.dataset.model);
+            });
+        });
+
+        // Enable text selection and copying
+        selectedModelsList.querySelectorAll('.model-endpoint').forEach(span => {
+            span.addEventListener('click', () => {
+                // Select text on click for easy copying
+                const range = document.createRange();
+                range.selectNodeContents(span);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
             });
         });
     }
