@@ -43,7 +43,7 @@ body {
 /* Main Layout - Pintura Style */
 #app {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: minmax(380px, 33%) 1fr;
     grid-template-rows: 48px 1fr 60px;
     height: 100vh;
     background: var(--bg-main);
@@ -303,8 +303,10 @@ input:focus,
     margin-top: 3px;
 }
 
-/* Image Upload - Compact Pintura Style */
-.image-upload-area {
+/* Upload Areas - Compact Pintura Style */
+.image-upload-area,
+.video-upload-area,
+.multi-image-upload-area {
     border: 1px dashed var(--border-color);
     border-radius: 4px;
     padding: 24px 16px;
@@ -314,9 +316,18 @@ input:focus,
     background: var(--input-bg);
 }
 
-.image-upload-area:hover {
+.image-upload-area:hover,
+.video-upload-area:hover,
+.multi-image-upload-area:hover {
     border-color: var(--pintura-accent);
     background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .upload-placeholder svg {
@@ -334,8 +345,120 @@ input:focus,
     max-width: 100%;
     max-height: 200px;
     border-radius: 4px;
-    margin-top: 10px;
     object-fit: contain;
+}
+
+/* Multi Image Upload */
+.multi-image-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.multi-image-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+}
+
+.multi-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.multi-image-item .remove-multi-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.multi-image-item .remove-multi-btn:hover {
+    background: var(--pintura-danger);
+}
+
+.multi-image-add {
+    aspect-ratio: 1;
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: var(--input-bg);
+    transition: all 0.15s;
+}
+
+.multi-image-add:hover {
+    border-color: var(--pintura-accent);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.multi-image-add svg {
+    width: 24px;
+    height: 24px;
+    opacity: 0.4;
+    margin-bottom: 4px;
+}
+
+.multi-image-add p {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Dual Image Upload (Start/End Frame) */
+.dual-upload-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.dual-upload-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dual-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.dual-upload-item .image-upload-area {
+    padding: 16px 12px;
+    min-height: 140px;
+}
+
+.dual-upload-item .upload-placeholder svg {
+    width: 24px;
+    height: 24px;
+}
+
+.dual-upload-item .upload-placeholder p {
+    font-size: 10px;
 }
 
 /* Button Groups - Pintura Style */

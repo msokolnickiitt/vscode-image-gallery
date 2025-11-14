@@ -12,7 +12,10 @@
         searchResults: [],
         history: [],
         currentRequest: null,
-        imageData: null,
+        // Upload data
+        singleImageData: null,
+        singleVideoData: null,
+        multiImageData: [],
         startFrameData: null,
         endFrameData: null,
         duration: '5',
@@ -24,7 +27,6 @@
     const modeSelect = document.getElementById('generation-mode');
     const promptSection = document.getElementById('prompt-section');
     const promptTextarea = document.getElementById('prompt');
-    const imageUploadSection = document.getElementById('image-upload-section');
     const videoDurationSection = document.getElementById('video-duration-section');
     const aspectRatioSection = document.getElementById('aspect-ratio-section');
     const modelSearchInput = document.getElementById('model-search');
@@ -42,17 +44,33 @@
     const cancelSetBtn = document.getElementById('cancel-set-btn');
     const selectSetBtn = document.getElementById('select-set-btn');
 
-    // Image upload
-    const imageUpload = document.getElementById('image-upload');
-    const imageFileInput = document.getElementById('image-file-input');
+    // Upload sections
+    const singleImageUpload = document.getElementById('single-image-upload');
+    const singleVideoUpload = document.getElementById('single-video-upload');
+    const multiImageUpload = document.getElementById('multi-image-upload');
+    const dualImageUpload = document.getElementById('dual-image-upload');
+
+    // Upload areas and inputs
+    const singleImageArea = document.getElementById('single-image-area');
+    const singleImageInput = document.getElementById('single-image-input');
+    const singleVideoArea = document.getElementById('single-video-area');
+    const singleVideoInput = document.getElementById('single-video-input');
+    const multiImageArea = document.getElementById('multi-image-area');
+    const multiImageInput = document.getElementById('multi-image-input');
+    const multiImagePreview = document.getElementById('multi-image-preview');
+    const startFrameArea = document.getElementById('start-frame-area');
+    const startFrameInput = document.getElementById('start-frame-input');
+    const endFrameArea = document.getElementById('end-frame-area');
+    const endFrameInput = document.getElementById('end-frame-input');
 
     // Initialize
     init();
 
     function init() {
         attachEventListeners();
+        // Initialize tab - hide non-active optgroups
+        switchTab(state.currentTab);
         vscode.postMessage({ command: 'POST.generator.ready' });
-        updateUIForMode();
     }
 
     function attachEventListeners() {
@@ -86,34 +104,54 @@
             showModelSetModal();
         });
 
-        // Image upload
-        imageUpload.addEventListener('click', () => {
-            imageFileInput.click();
-        });
-
-        imageFileInput.addEventListener('change', (e) => {
+        // Single Image Upload
+        singleImageArea.addEventListener('click', () => singleImageInput.click());
+        singleImageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) {
-                loadImageFile(file);
-            }
+            if (file) loadSingleImage(file);
+        });
+        setupDragAndDrop(singleImageArea, (file) => {
+            if (file.type.startsWith('image/')) loadSingleImage(file);
         });
 
-        imageUpload.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            imageUpload.style.borderColor = 'var(--primary-color)';
+        // Single Video Upload
+        singleVideoArea.addEventListener('click', () => singleVideoInput.click());
+        singleVideoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadSingleVideo(file);
+        });
+        setupDragAndDrop(singleVideoArea, (file) => {
+            if (file.type.startsWith('video/')) loadSingleVideo(file);
         });
 
-        imageUpload.addEventListener('dragleave', () => {
-            imageUpload.style.borderColor = '';
+        // Multi Image Upload
+        multiImageArea.addEventListener('click', () => multiImageInput.click());
+        multiImageInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) loadMultiImages(files);
+        });
+        setupDragAndDrop(multiImageArea, (file, files) => {
+            const imageFiles = files ? Array.from(files).filter(f => f.type.startsWith('image/')) : [file];
+            if (imageFiles.length > 0) loadMultiImages(imageFiles);
         });
 
-        imageUpload.addEventListener('drop', (e) => {
-            e.preventDefault();
-            imageUpload.style.borderColor = '';
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                loadImageFile(file);
-            }
+        // Dual Image Upload (Start/End Frame)
+        startFrameArea.addEventListener('click', () => startFrameInput.click());
+        startFrameInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadStartFrame(file);
+        });
+        setupDragAndDrop(startFrameArea, (file) => {
+            if (file.type.startsWith('image/')) loadStartFrame(file);
+        });
+
+        endFrameArea.addEventListener('click', () => endFrameInput.click());
+        endFrameInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadEndFrame(file);
+        });
+        setupDragAndDrop(endFrameArea, (file) => {
+            if (file.type.startsWith('image/')) loadEndFrame(file);
         });
 
         // Duration buttons
@@ -168,21 +206,32 @@
             }
         });
 
-        // Update mode select options
-        const optgroups = modeSelect.querySelectorAll('optgroup');
-        if (tab === 'image') {
-            state.mode = 'text-to-image';
-            modeSelect.selectedIndex = 0;
-        } else {
-            state.mode = 'text-to-video';
-            modeSelect.selectedIndex = 5; // First video option
+        // Update mode select options - show/hide options based on tab
+        const options = modeSelect.querySelectorAll('option');
+        let firstVisibleOption = null;
+
+        options.forEach(option => {
+            if (option.dataset.tab === tab) {
+                option.style.display = '';
+                if (!firstVisibleOption) {
+                    firstVisibleOption = option;
+                }
+            } else {
+                option.style.display = 'none';
+            }
+        });
+
+        // Select first visible option
+        if (firstVisibleOption) {
+            state.mode = firstVisibleOption.value;
+            modeSelect.value = firstVisibleOption.value;
         }
 
         updateUIForMode();
     }
 
     function updateTabForMode() {
-        const videoModes = ['text-to-video', 'image-to-video', 'start-end-frame'];
+        const videoModes = ['text-to-video', 'image-to-video', 'start-end-frame', 'video-upscaling', 'reference-to-video'];
         const targetTab = videoModes.includes(state.mode) ? 'video' : 'image';
 
         if (state.currentTab !== targetTab) {
@@ -193,27 +242,60 @@
     function updateUIForMode() {
         const mode = state.mode;
 
-        // Show/hide sections based on mode
-        const needsPrompt = !['upscaling', 'remove-background'].includes(mode);
-        const needsImage = ['edit-image', 'upscaling', 'remove-background', 'image-to-video', 'start-end-frame'].includes(mode);
-        const needsDuration = ['image-to-video', 'text-to-video', 'start-end-frame'].includes(mode);
+        // Determine which upload section to show
+        const uploadType = getUploadTypeForMode(mode);
+
+        // Hide all upload sections
+        singleImageUpload.style.display = 'none';
+        singleVideoUpload.style.display = 'none';
+        multiImageUpload.style.display = 'none';
+        dualImageUpload.style.display = 'none';
+
+        // Show the appropriate upload section
+        if (uploadType === 'single-image') {
+            singleImageUpload.style.display = 'flex';
+        } else if (uploadType === 'single-video') {
+            singleVideoUpload.style.display = 'flex';
+        } else if (uploadType === 'multi-image') {
+            multiImageUpload.style.display = 'flex';
+        } else if (uploadType === 'dual-image') {
+            dualImageUpload.style.display = 'flex';
+        }
+
+        // Show/hide other sections based on mode
+        const needsPrompt = !['remove-background'].includes(mode);
+        const needsDuration = ['image-to-video', 'text-to-video', 'start-end-frame', 'reference-to-video'].includes(mode);
         const needsAspectRatio = ['text-to-image', 'edit-image'].includes(mode);
 
         promptSection.style.display = needsPrompt ? 'flex' : 'none';
-        imageUploadSection.style.display = needsImage ? 'flex' : 'none';
         videoDurationSection.style.display = needsDuration ? 'flex' : 'none';
         aspectRatioSection.style.display = needsAspectRatio ? 'flex' : 'none';
 
-        // Update prompt label
-        if (mode === 'edit-multi-images') {
-            promptTextarea.placeholder = 'Apply this edit to all images...';
-        } else {
-            promptTextarea.placeholder = 'Enter your prompt here...';
-        }
+        // Update prompt placeholder based on mode
+        const placeholders = {
+            'edit-multi-images': 'Apply this edit to all images...',
+            'image-upscaling': 'Enter upscaling prompt (optional)...',
+            'video-upscaling': 'Enter video upscaling prompt (optional)...',
+            'reference-to-video': 'Describe the video to generate...',
+            'default': 'Describe what you want to generate...'
+        };
+        promptTextarea.placeholder = placeholders[mode] || placeholders['default'];
+    }
 
-        // Clear selected models when mode changes
-        // state.selectedModels = [];
-        // updateSelectedModelsUI();
+    function getUploadTypeForMode(mode) {
+        const uploadMap = {
+            'text-to-image': 'none',
+            'edit-image': 'single-image',
+            'edit-multi-images': 'multi-image',
+            'remove-background': 'single-image',
+            'image-upscaling': 'single-image',
+            'text-to-video': 'none',
+            'image-to-video': 'single-image',
+            'start-end-frame': 'dual-image',
+            'video-upscaling': 'single-video',
+            'reference-to-video': 'single-image'
+        };
+        return uploadMap[mode] || 'none';
     }
 
     function searchModels(query) {
@@ -309,24 +391,147 @@
         hideModelSetModal();
     }
 
-    function loadImageFile(file) {
+    // Drag and drop helper
+    function setupDragAndDrop(element, onDrop) {
+        element.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            element.style.borderColor = 'var(--pintura-accent)';
+        });
+
+        element.addEventListener('dragleave', () => {
+            element.style.borderColor = '';
+        });
+
+        element.addEventListener('drop', (e) => {
+            e.preventDefault();
+            element.style.borderColor = '';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                onDrop(files[0], files);
+            }
+        });
+    }
+
+    // Single Image Upload
+    function loadSingleImage(file) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            state.imageData = e.target.result;
-            displayImagePreview(e.target.result);
+            state.singleImageData = e.target.result;
+            displaySingleImagePreview(e.target.result);
         };
         reader.readAsDataURL(file);
     }
 
-    function displayImagePreview(dataUrl) {
-        imageUpload.innerHTML = `
+    function displaySingleImagePreview(dataUrl) {
+        singleImageArea.innerHTML = `
             <img src="${dataUrl}" class="image-preview" alt="Uploaded image">
-            <button class="secondary-btn" style="margin-top: 12px;" id="change-image-btn">Change Image</button>
+            <button class="secondary-btn" style="margin-top: 12px;" id="change-single-image-btn">Change</button>
+        `;
+        document.getElementById('change-single-image-btn').addEventListener('click', () => {
+            singleImageInput.click();
+        });
+    }
+
+    // Single Video Upload
+    function loadSingleVideo(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.singleVideoData = e.target.result;
+            displaySingleVideoPreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function displaySingleVideoPreview(dataUrl) {
+        singleVideoArea.innerHTML = `
+            <video src="${dataUrl}" class="video-preview" controls style="max-width: 100%; max-height: 200px; border-radius: 4px;"></video>
+            <button class="secondary-btn" style="margin-top: 12px;" id="change-single-video-btn">Change</button>
+        `;
+        document.getElementById('change-single-video-btn').addEventListener('click', () => {
+            singleVideoInput.click();
+        });
+    }
+
+    // Multi Image Upload
+    function loadMultiImages(files) {
+        const loadPromises = files.map(file => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        });
+
+        Promise.all(loadPromises).then(dataUrls => {
+            state.multiImageData = dataUrls;
+            displayMultiImagePreview(dataUrls);
+        });
+    }
+
+    function displayMultiImagePreview(dataUrls) {
+        multiImageArea.style.display = 'none';
+        multiImagePreview.style.display = 'grid';
+        multiImagePreview.innerHTML = dataUrls.map((url, index) => `
+            <div class="multi-image-item">
+                <img src="${url}" alt="Image ${index + 1}">
+                <button class="remove-multi-btn" data-index="${index}">×</button>
+            </div>
+        `).join('') + `
+            <div class="multi-image-add" id="add-more-images">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <p>Add More</p>
+            </div>
         `;
 
-        document.getElementById('change-image-btn').addEventListener('click', () => {
-            imageFileInput.click();
+        // Attach remove listeners
+        multiImagePreview.querySelectorAll('.remove-multi-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const index = parseInt(btn.dataset.index);
+                state.multiImageData.splice(index, 1);
+                if (state.multiImageData.length === 0) {
+                    multiImageArea.style.display = 'block';
+                    multiImagePreview.style.display = 'none';
+                } else {
+                    displayMultiImagePreview(state.multiImageData);
+                }
+            });
         });
+
+        // Add more button
+        document.getElementById('add-more-images').addEventListener('click', () => {
+            multiImageInput.click();
+        });
+    }
+
+    // Start Frame Upload
+    function loadStartFrame(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.startFrameData = e.target.result;
+            displayFramePreview(startFrameArea, e.target.result, 'Start', () => startFrameInput.click());
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // End Frame Upload
+    function loadEndFrame(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.endFrameData = e.target.result;
+            displayFramePreview(endFrameArea, e.target.result, 'End', () => endFrameInput.click());
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function displayFramePreview(area, dataUrl, label, onClick) {
+        area.innerHTML = `
+            <img src="${dataUrl}" class="image-preview" alt="${label} frame" style="max-height: 120px;">
+            <button class="secondary-btn" style="margin-top: 8px; font-size: 10px; padding: 4px 8px;">Change</button>
+        `;
+        area.querySelector('button').addEventListener('click', onClick);
     }
 
 
@@ -337,16 +542,29 @@
             return;
         }
 
-        const needsPrompt = !['upscaling', 'remove-background'].includes(state.mode);
-        const needsImage = ['edit-image', 'upscaling', 'remove-background', 'image-to-video', 'start-end-frame'].includes(state.mode);
+        const needsPrompt = !['remove-background'].includes(state.mode);
+        const uploadType = getUploadTypeForMode(state.mode);
 
         if (needsPrompt && !promptTextarea.value.trim()) {
             showError('Please enter a prompt');
             return;
         }
 
-        if (needsImage && !state.imageData) {
+        // Validate uploads based on mode
+        if (uploadType === 'single-image' && !state.singleImageData) {
             showError('Please upload an image');
+            return;
+        }
+        if (uploadType === 'single-video' && !state.singleVideoData) {
+            showError('Please upload a video');
+            return;
+        }
+        if (uploadType === 'multi-image' && state.multiImageData.length === 0) {
+            showError('Please upload at least one image');
+            return;
+        }
+        if (uploadType === 'dual-image' && (!state.startFrameData || !state.endFrameData)) {
+            showError('Please upload both start and end frames');
             return;
         }
 
@@ -357,8 +575,16 @@
             duration: state.duration
         };
 
-        if (state.imageData) {
-            input.image_data = state.imageData;
+        // Add upload data based on mode
+        if (state.mode === 'edit-multi-images') {
+            input.images_data = state.multiImageData;
+        } else if (state.mode === 'start-end-frame') {
+            input.start_frame_data = state.startFrameData;
+            input.end_frame_data = state.endFrameData;
+        } else if (state.mode === 'video-upscaling') {
+            input.video_data = state.singleVideoData;
+        } else if (state.singleImageData) {
+            input.image_data = state.singleImageData;
         }
 
         const requestId = `req-${Date.now()}`;

@@ -386,8 +386,9 @@ class AIGeneratorWebview {
     ): Promise<any> {
         const prepared = { ...input };
 
-        // Handle image uploads for image-to-video and edit modes
-        if (mode === 'image-to-video' || mode === 'start-end-frame' || mode === 'edit-image' || mode === 'upscaling' || mode === 'remove-background') {
+        // Handle image uploads for various modes
+        if (mode === 'image-to-video' || mode === 'edit-image' || mode === 'image-upscaling' ||
+            mode === 'remove-background' || mode === 'reference-to-video') {
             if (input.image_data) {
                 webview.postMessage({
                     command: 'POST.generator.statusUpdate',
@@ -401,20 +402,43 @@ class AIGeneratorWebview {
                 prepared.image_url = imageUrl;
                 delete prepared.image_data;
             }
+        }
 
-            if (mode === 'start-end-frame' && input.start_frame_data) {
+        // Handle dual frame upload
+        if (mode === 'start-end-frame') {
+            if (input.start_frame_data) {
+                webview.postMessage({
+                    command: 'POST.generator.statusUpdate',
+                    requestId,
+                    status: 'uploading'
+                });
+
                 const startBlob = this.base64ToBlob(input.start_frame_data);
                 const startUrl = await this.falClient.uploadFile(startBlob);
                 prepared.start_frame_url = startUrl;
                 delete prepared.start_frame_data;
-
-                if (input.end_frame_data) {
-                    const endBlob = this.base64ToBlob(input.end_frame_data);
-                    const endUrl = await this.falClient.uploadFile(endBlob);
-                    prepared.end_frame_url = endUrl;
-                    delete prepared.end_frame_data;
-                }
             }
+
+            if (input.end_frame_data) {
+                const endBlob = this.base64ToBlob(input.end_frame_data);
+                const endUrl = await this.falClient.uploadFile(endBlob);
+                prepared.end_frame_url = endUrl;
+                delete prepared.end_frame_data;
+            }
+        }
+
+        // Handle video upload
+        if (mode === 'video-upscaling' && input.video_data) {
+            webview.postMessage({
+                command: 'POST.generator.statusUpdate',
+                requestId,
+                status: 'uploading'
+            });
+
+            const videoBlob = this.base64ToBlob(input.video_data);
+            const videoUrl = await this.falClient.uploadFile(videoBlob);
+            prepared.video_url = videoUrl;
+            delete prepared.video_data;
         }
 
         // Handle multi-image edits
@@ -618,18 +642,17 @@ class AIGeneratorWebview {
             <div class="form-section">
                 <label>Type</label>
                 <select id="generation-mode" class="mode-select">
-                    <optgroup label="Image">
-                        <option value="text-to-image">Text To Image</option>
-                        <option value="edit-image">Edit Image</option>
-                        <option value="edit-multi-images">Edit Multi Images</option>
-                        <option value="upscaling">Upscaling</option>
-                        <option value="remove-background">Remove Background</option>
-                    </optgroup>
-                    <optgroup label="Video">
-                        <option value="text-to-video">Text To Video</option>
-                        <option value="image-to-video">Image To Video</option>
-                        <option value="start-end-frame">Start End Frame</option>
-                    </optgroup>
+                    <option value="text-to-image" data-tab="image">Text To Image</option>
+                    <option value="edit-image" data-tab="image">Edit Image</option>
+                    <option value="edit-multi-images" data-tab="image">Edit Multi Images</option>
+                    <option value="remove-background" data-tab="image">Remove Background</option>
+                    <option value="image-upscaling" data-tab="image">Image Upscaling</option>
+
+                    <option value="text-to-video" data-tab="video">Text To Video</option>
+                    <option value="image-to-video" data-tab="video">Image To Video</option>
+                    <option value="start-end-frame" data-tab="video">Start End Frame</option>
+                    <option value="reference-to-video" data-tab="video">Reference To Video</option>
+                    <option value="video-upscaling" data-tab="video">Video Upscaling</option>
                 </select>
             </div>
 
@@ -650,19 +673,86 @@ class AIGeneratorWebview {
                 <textarea id="prompt" placeholder="Describe what you want to generate..." rows="3"></textarea>
             </div>
 
-            <div id="image-upload-section" class="form-section" style="display:none;">
+            <!-- Single Image Upload -->
+            <div id="single-image-upload" class="form-section" style="display:none;">
                 <label>Image</label>
-                <div class="image-upload-area" id="image-upload">
+                <div class="image-upload-area" id="single-image-area">
                     <div class="upload-placeholder">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                             <circle cx="8.5" cy="8.5" r="1.5"/>
                             <polyline points="21 15 16 10 5 21"/>
                         </svg>
-                        <p>Click to upload</p>
+                        <p>Click to upload image</p>
                     </div>
                 </div>
-                <input type="file" id="image-file-input" accept="image/*" style="display:none;">
+                <input type="file" id="single-image-input" accept="image/*" style="display:none;">
+            </div>
+
+            <!-- Single Video Upload -->
+            <div id="single-video-upload" class="form-section" style="display:none;">
+                <label>Video</label>
+                <div class="video-upload-area" id="single-video-area">
+                    <div class="upload-placeholder">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        <p>Click to upload video</p>
+                    </div>
+                </div>
+                <input type="file" id="single-video-input" accept="video/*" style="display:none;">
+            </div>
+
+            <!-- Multi Image Upload -->
+            <div id="multi-image-upload" class="form-section" style="display:none;">
+                <label>Images (Multiple)</label>
+                <div class="multi-image-upload-area" id="multi-image-area">
+                    <div class="upload-placeholder">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p>Click to upload multiple images</p>
+                    </div>
+                </div>
+                <div id="multi-image-preview" class="multi-image-preview" style="display:none;"></div>
+                <input type="file" id="multi-image-input" accept="image/*" multiple style="display:none;">
+            </div>
+
+            <!-- Dual Image Upload (Start/End Frame) -->
+            <div id="dual-image-upload" class="form-section" style="display:none;">
+                <label>Frames</label>
+                <div class="dual-upload-container">
+                    <div class="dual-upload-item">
+                        <label class="dual-label">Start Frame</label>
+                        <div class="image-upload-area" id="start-frame-area">
+                            <div class="upload-placeholder">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <p>Start</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dual-upload-item">
+                        <label class="dual-label">End Frame</label>
+                        <div class="image-upload-area" id="end-frame-area">
+                            <div class="upload-placeholder">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <p>End</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="file" id="start-frame-input" accept="image/*" style="display:none;">
+                <input type="file" id="end-frame-input" accept="image/*" style="display:none;">
             </div>
 
             <div id="video-duration-section" class="form-section" style="display:none;">

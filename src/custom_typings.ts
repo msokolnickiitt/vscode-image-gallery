@@ -26,11 +26,13 @@ declare module 'custom_typings' {
         | "text-to-image"
         | "edit-image"
         | "edit-multi-images"
-        | "upscaling"
         | "remove-background"
+        | "image-upscaling"
         | "text-to-video"
         | "image-to-video"
-        | "start-end-frame";
+        | "start-end-frame"
+        | "video-upscaling"
+        | "reference-to-video";
 
     export type GenerationStatus =
         | "idle"
