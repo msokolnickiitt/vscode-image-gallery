@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { FalClient } from './fal_client';
-import { MODEL_SETS, getDefaultModels, getModelDisplayName, getCategoryForMode } from './models';
+import { MODEL_SETS, getDefaultModels, getModelDisplayName, getCategoryForMode, getModelSetsForMode } from './models';
 import { reporter } from '../telemetry';
 import * as utils from '../utils';
 import type {
@@ -198,6 +198,10 @@ class AIGeneratorWebview {
 
             case 'POST.generator.getModelSet':
                 await this.handleGetModelSet(message, webview);
+                break;
+
+            case 'POST.generator.getModelSetsForMode':
+                await this.handleGetModelSetsForMode(message, webview);
                 break;
 
             case 'POST.generator.saveResult':
@@ -594,6 +598,19 @@ class AIGeneratorWebview {
         }
     }
 
+    private async handleGetModelSetsForMode(message: any, webview: vscode.Webview) {
+        const { mode } = message;
+        console.log('[Backend] Getting model sets for mode:', mode);
+        const modelSets = getModelSetsForMode(mode);
+        console.log('[Backend] Found model sets:', modelSets.length, 'sets');
+        console.log('[Backend] Model sets:', modelSets.map(s => s.id));
+
+        webview.postMessage({
+            command: 'POST.generator.modelSetsForMode',
+            modelSets
+        });
+    }
+
     private async handleSaveResult(message: any, webview: vscode.Webview) {
         try {
             const { url, type, filename } = message;
@@ -808,12 +825,14 @@ class AIGeneratorWebview {
                 </div>
                 <div class="model-selection">
                     <div class="selected-models-list" id="selected-models-list"></div>
-                    <button id="add-model-btn" class="add-model-btn">
-                        <span>+</span> Add another model
-                    </button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="add-model-btn" class="add-model-btn">
+                            <span>+</span> Add another model
+                        </button>
+                        <button id="explore-sets-btn" class="secondary-btn">Select Recommended</button>
+                    </div>
                     <div class="model-actions" id="model-actions" style="display:none;">
                         <input type="text" id="model-search" placeholder="Search models..." class="search-input">
-                        <button id="explore-sets-btn" class="secondary-btn">Explore Sets</button>
                     </div>
                     <div id="model-search-results" class="model-list" style="display:none;"></div>
                 </div>

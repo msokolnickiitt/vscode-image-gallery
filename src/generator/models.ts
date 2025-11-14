@@ -1,30 +1,171 @@
 import type { ModelSet, FalModel, GenerationMode } from 'custom_typings';
 
 /**
- * Predefined Model Sets based on use case
+ * Predefined Model Sets based on use case and generation mode
  */
 export const MODEL_SETS: ModelSet[] = [
+    // Text to Image Sets
     {
-        id: 'state-of-the-art',
-        name: 'State of the Art',
-        description: 'The best quality models for professional results',
+        id: 'text-to-image-sota',
+        name: 'Text to Image - State of the Art',
+        description: 'Best quality text-to-image models',
         models: [
-            'fal-ai/flux-pro/v1.1-ultra',
-            'fal-ai/flux/dev',
-            'fal-ai/imagen-4',
-            'fal-ai/recraft-v3',
-            'fal-ai/veo-3.1'
+            'fal-ai/reve/text-to-image',
+            'fal-ai/bytedance/seedream/v4/text-to-image',
+            'fal-ai/nano-banana',
+            'fal-ai/bytedance/dreamina/v3.1/text-to-image',
+            'fal-ai/imagen4/preview/ultra'
         ]
     },
     {
-        id: 'fast-open-source',
-        name: 'Fast Open Source',
-        description: 'Quick generation with open source models',
+        id: 'text-to-image-fast',
+        name: 'Text to Image - Fast Open-Source',
+        description: 'Fast open-source text-to-image models',
         models: [
-            'fal-ai/flux/schnell',
-            'fal-ai/fast-sdxl',
-            'fal-ai/fast-turbo-diffusion',
-            'fal-ai/sana-video'
+            'fal-ai/flux/krea',
+            'fal-ai/flux-1/krea',
+            'fal-ai/flux-1/schnell',
+            'fal-ai/flux-1/dev'
+        ]
+    },
+    // Edit Image Sets
+    {
+        id: 'edit-image-sota',
+        name: 'Edit Image - State of the Art',
+        description: 'Best quality image editing models',
+        models: [
+            'fal-ai/reve/fast/edit',
+            'fal-ai/reve/edit',
+            'fal-ai/bytedance/seedream/v4/edit',
+            'fal-ai/nano-banana/edit',
+            'fal-ai/qwen-image-edit',
+            'fal-ai/flux-pro/kontext/max'
+        ]
+    },
+    // Edit Multi-Image Sets
+    {
+        id: 'edit-multi-images-sota',
+        name: 'Edit Multi-Image - State of the Art',
+        description: 'Best quality multi-image editing models',
+        models: [
+            'fal-ai/qwen-image-edit-plus',
+            'fal-ai/bytedance/seedream/v4/edit',
+            'fal-ai/nano-banana/edit',
+            'fal-ai/flux-pro/kontext/max/multi'
+        ]
+    },
+    // Upscale Image Sets
+    {
+        id: 'image-upscaling-sota',
+        name: 'Upscale Image - State of the Art',
+        description: 'Best quality image upscaling models',
+        models: [
+            'fal-ai/seedvr/upscale/image',
+            'fal-ai/topaz/upscale/image',
+            'fal-ai/recraft/upscale/creative',
+            'fal-ai/recraft/upscale/crisp'
+        ]
+    },
+    // Remove Background Sets
+    {
+        id: 'remove-background',
+        name: 'Remove Background',
+        description: 'Background removal models',
+        models: [
+            'smoretalk-ai/rembg-enhance',
+            'fal-ai/bria/background/remove',
+            'fal-ai/birefnet/v2',
+            'fal-ai/birefnet',
+            'fal-ai/imageutils/rembg'
+        ]
+    },
+    // Text to Video Sets
+    {
+        id: 'text-to-video-sota',
+        name: 'Text to Video - State of the Art',
+        description: 'Best quality text-to-video models',
+        models: [
+            'fal-ai/veo3.1',
+            'fal-ai/sora-2/text-to-video/pro',
+            'fal-ai/kling-video/v2.5-turbo/pro/text-to-video',
+            'fal-ai/pixverse/v5/text-to-video',
+            'fal-ai/minimax/hailuo-02/pro/text-to-video',
+            'fal-ai/bytedance/seedance/v1/pro/text-to-video'
+        ]
+    },
+    {
+        id: 'text-to-video-affordable',
+        name: 'Text to Video - Affordable',
+        description: 'Affordable state of the art text-to-video models',
+        models: [
+            'fal-ai/veo3.1/fast',
+            'fal-ai/sora-2/text-to-video',
+            'fal-ai/bytedance/seedance/v1/lite/text-to-video'
+        ]
+    },
+    // Image to Video Sets
+    {
+        id: 'image-to-video-sota',
+        name: 'Image to Video - State of the Art',
+        description: 'Best quality image-to-video models',
+        models: [
+            'fal-ai/wan-25-preview/image-to-video',
+            'fal-ai/kling-video/v2.5-turbo/pro/image-to-video',
+            'fal-ai/minimax/hailuo-02-fast/image-to-video',
+            'fal-ai/veo3/fast/image-to-video',
+            'fal-ai/minimax/hailuo-02/standard/image-to-video',
+            'fal-ai/bytedance/seedance/v1/pro/image-to-video',
+            'fal-ai/veo3.1/fast/image-to-video',
+            'fal-ai/veo3.1/image-to-video'
+        ]
+    },
+    // Start End Frame Interpolation Sets
+    {
+        id: 'start-end-frame-sota',
+        name: 'Frame Interpolation - State of the Art',
+        description: 'Best quality frame interpolation models',
+        models: [
+            'fal-ai/pixverse/v5/transition',
+            'fal-ai/minimax/hailuo-02/pro/image-to-video',
+            'fal-ai/bytedance/seedance/v1/pro/image-to-video',
+            'fal-ai/kling-video/v2.1/pro/image-to-video',
+            'fal-ai/veo3.1/first-last-frame-to-video'
+        ]
+    },
+    {
+        id: 'start-end-frame-affordable',
+        name: 'Frame Interpolation - Affordable',
+        description: 'Affordable frame interpolation models',
+        models: [
+            'fal-ai/veo3.1/fast/first-last-frame-to-video',
+            'fal-ai/pixverse/v5/transition',
+            'fal-ai/wan/v2.2-a14b/image-to-video/turbo',
+            'fal-ai/minimax/hailuo-02/standard/image-to-video'
+        ]
+    },
+    // Reference to Video Sets
+    {
+        id: 'reference-to-video-sota',
+        name: 'Reference to Video - State of the Art',
+        description: 'Best quality reference-to-video models',
+        models: [
+            'fal-ai/veo3.1/reference-to-video',
+            'fal-ai/vidu/reference-to-video'
+        ]
+    },
+    // Video Upscaling Sets
+    {
+        id: 'video-upscaling',
+        name: 'Video Upscaling',
+        description: 'Video upscaling models',
+        models: [
+            'fal-ai/flashvsr/upscale/video',
+            'fal-ai/bytedance-upscaler/upscale/video',
+            'fal-ai/seedvr/upscale/video',
+            'fal-ai/topaz/upscale/video',
+            'simalabs/sima-video-upscaler-lite',
+            'fal-ai/video-upscaler',
+            'bria/video/increase-resolution'
         ]
     }
 ];
@@ -291,4 +432,26 @@ export function getCategoryForMode(mode: GenerationMode): string {
     };
 
     return categoryMap[mode] || 'text-to-image';
+}
+
+/**
+ * Get model sets appropriate for a specific generation mode
+ * Returns sets that match the given mode
+ */
+export function getModelSetsForMode(mode: GenerationMode): ModelSet[] {
+    const setIdsForMode: Record<GenerationMode, string[]> = {
+        'text-to-image': ['text-to-image-sota', 'text-to-image-fast'],
+        'edit-image': ['edit-image-sota'],
+        'edit-multi-images': ['edit-multi-images-sota'],
+        'image-upscaling': ['image-upscaling-sota'],
+        'remove-background': ['remove-background'],
+        'text-to-video': ['text-to-video-sota', 'text-to-video-affordable'],
+        'image-to-video': ['image-to-video-sota'],
+        'start-end-frame': ['start-end-frame-sota', 'start-end-frame-affordable'],
+        'video-upscaling': ['video-upscaling'],
+        'reference-to-video': ['reference-to-video-sota']
+    };
+
+    const setIds = setIdsForMode[mode] || [];
+    return MODEL_SETS.filter(set => setIds.includes(set.id));
 }

@@ -491,7 +491,34 @@
     }
 
     function showModelSetModal() {
-        modelSetsList.innerHTML = state.modelSets.map(set => `
+        console.log('[Frontend] Opening modal for mode:', state.mode);
+
+        // Show loading state
+        modelSetsList.innerHTML = '<div style="padding: 20px; text-align: center;">Loading model sets...</div>';
+        modelSetModal.style.display = 'flex';
+
+        // Request model sets for current mode
+        console.log('[Frontend] Requesting model sets for mode:', state.mode);
+        vscode.postMessage({
+            command: 'POST.generator.getModelSetsForMode',
+            mode: state.mode
+        });
+    }
+
+    function renderModelSets(modelSets) {
+        console.log('[Frontend] Rendering model sets:', modelSets.length, 'sets received');
+        console.log('[Frontend] Model sets data:', modelSets);
+
+        // Store modelSets temporarily for selectModelSet
+        state.currentModalSets = modelSets;
+
+        if (!modelSets || modelSets.length === 0) {
+            console.log('[Frontend] No model sets to display');
+            modelSetsList.innerHTML = '<div style="padding: 20px; text-align: center;">No model sets available for this mode.</div>';
+            return;
+        }
+
+        modelSetsList.innerHTML = modelSets.map(set => `
             <div class="model-set-card" data-set-id="${set.id}">
                 <div class="set-name">${set.name}</div>
                 <div class="set-description">${set.description}</div>
@@ -501,6 +528,8 @@
             </div>
         `).join('');
 
+        console.log('[Frontend] Rendered', modelSetsList.children.length, 'cards');
+
         // Attach click listeners
         modelSetsList.querySelectorAll('.model-set-card').forEach(card => {
             card.addEventListener('click', () => {
@@ -508,8 +537,6 @@
                 card.classList.add('selected');
             });
         });
-
-        modelSetModal.style.display = 'flex';
     }
 
     function hideModelSetModal() {
@@ -520,7 +547,7 @@
         const selectedCard = modelSetsList.querySelector('.model-set-card.selected');
         if (selectedCard) {
             const setId = selectedCard.dataset.setId;
-            const modelSet = state.modelSets.find(s => s.id === setId);
+            const modelSet = state.currentModalSets?.find(s => s.id === setId);
             if (modelSet) {
                 setSelectedModels([...modelSet.models]);
                 updateSelectedModelsUI();
@@ -1109,6 +1136,11 @@
                     console.log('[WebView] First model:', message.models[0]);
                 }
                 displaySearchResults(message.models);
+                break;
+
+            case 'POST.generator.modelSetsForMode':
+                console.log('[WebView] Received modelSetsForMode:', message.modelSets?.length, 'sets');
+                renderModelSets(message.modelSets);
                 break;
 
             case 'POST.generator.enqueued':
