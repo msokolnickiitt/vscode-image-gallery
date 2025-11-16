@@ -181,13 +181,20 @@ class FilterManager {
 		const nameFilter = FilterManager.filterState.nameText.toLowerCase();
 		const typeFilter = FilterManager.filterState.mediaType;
 
-		for (const folder of Object.values(gFolders)) {
+		for (const [folderId, folder] of Object.entries(gFolders)) {
 			let visibleImagesCount = 0;
 
-			for (const image of Object.values(folder.images)) {
+			for (const [imageId, image] of Object.entries(folder.images)) {
 				const container = image.container;
-				const mediaElement = container.querySelector(`#${image.id}`);
-				const filename = container.querySelector(`#${image.id}-filename`).textContent;
+				const mediaElement = container.querySelector(`#${imageId}`);
+				const filenameElement = container.querySelector(`#${imageId}-filename`);
+
+				// Skip if elements don't exist
+				if (!mediaElement || !filenameElement) {
+					continue;
+				}
+
+				const filename = filenameElement.textContent;
 				const mediaType = mediaElement.dataset.meta ? JSON.parse(mediaElement.dataset.meta).type : "image";
 
 				// Check name filter
@@ -211,7 +218,7 @@ class FilterManager {
 				folder.grid.style.display = folder.bar.dataset.state === "collapsed" ? "none" : "grid";
 
 				// Update folder item count
-				const itemCountElement = folder.bar.querySelector(`#${folder.id}-items-count`);
+				const itemCountElement = folder.bar.querySelector(`#${folderId}-items-count`);
 				const totalImages = Object.keys(folder.images).length;
 				if (nameFilter !== "" || typeFilter !== "all") {
 					itemCountElement.textContent = `${visibleImagesCount} of ${totalImages} item${totalImages === 1 ? "" : "s"} found`;
