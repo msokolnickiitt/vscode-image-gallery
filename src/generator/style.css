@@ -1,28 +1,40 @@
 /* AI Media Generator - Pintura Style */
 
 :root {
-    /* Pintura-inspired colors */
-    --pintura-dark: #1a1a1a;
-    --pintura-sidebar: #2a2a2a;
-    --pintura-light-bg: #f5f5f5;
-    --pintura-border: #3a3a3a;
-    --pintura-text-light: #ffffff;
-    --pintura-text-dark: #333333;
-    --pintura-accent: #6366f1;
-    --pintura-accent-hover: #4f46e5;
+    /* Pintura editor colors - exact match */
+    --color-foreground: 0, 0, 0;
+    --color-background: 255, 255, 255;
+    --color-foreground-10: rgba(var(--color-foreground), 0.1);
+    --color-foreground-15: rgba(var(--color-foreground), 0.15);
+    --color-foreground-20: rgba(var(--color-foreground), 0.2);
+    --backdrop-filter-bright: brightness(110%) saturate(180%) blur(10px);
+    --backdrop-filter-dark: brightness(90%) saturate(180%) blur(10px);
+    --border-radius: 0.625em;
+    --border-radius-round: 9999em;
+
+    /* Light theme colors - matching Pintura */
+    --pintura-dark: #1f2937;
+    --pintura-sidebar: #fafafa;
+    --pintura-light-bg: #ffffff;
+    --pintura-border: #e5e7eb;
+    --pintura-text-light: #1f2937;
+    --pintura-text-dark: #1f2937;
+    --pintura-accent: rgba(var(--color-foreground), 0.1);
+    --pintura-accent-hover: rgba(var(--color-foreground), 0.15);
+    --pintura-accent-text: #1f2937;
     --pintura-success: #10b981;
     --pintura-danger: #ef4444;
     --pintura-warning: #f59e0b;
 
-    /* Use VSCode theme for adaptive colors */
-    --bg-main: var(--vscode-editor-background, #1e1e1e);
-    --bg-sidebar: var(--vscode-sideBar-background, #252526);
-    --bg-toolbar: var(--vscode-titleBar-activeBackground, #2d2d2d);
-    --text-primary: var(--vscode-foreground, #cccccc);
-    --text-secondary: var(--vscode-descriptionForeground, #969696);
-    --border-color: var(--vscode-panel-border, #3c3c3c);
-    --input-bg: var(--vscode-input-background, #3c3c3c);
-    --input-border: var(--vscode-input-border, #3c3c3c);
+    /* Light theme variables - matching Pintura editor */
+    --bg-main: #ffffff;
+    --bg-sidebar: #fafafa;
+    --bg-toolbar: #fafafa;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --input-bg: white;
+    --input-border: #e5e7eb;
 }
 
 * {
@@ -147,8 +159,10 @@ body {
 }
 
 .tab-btn.active {
-    color: var(--pintura-text-light);
+    color: var(--pintura-accent-text);
     background: var(--pintura-accent);
+    backdrop-filter: var(--backdrop-filter-dark);
+    -webkit-backdrop-filter: var(--backdrop-filter-dark);
 }
 
 /* Form Sections */
@@ -170,21 +184,22 @@ body {
     color: var(--pintura-danger);
 }
 
-/* Inputs - Minimal Pintura Style */
+/* Inputs - Matching gallery style */
 .mode-select,
 .search-input,
 textarea,
 input[type="text"],
 input[type="number"] {
-    padding: 8px 10px;
+    padding: 8px 12px;
     background: var(--input-bg);
     border: 1px solid var(--input-border);
-    border-radius: 4px;
+    border-radius: 8px;
     color: var(--text-primary);
-    font-size: 13px;
+    font-size: 14px;
     font-family: inherit;
     width: 100%;
-    transition: border-color 0.15s;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 textarea {
@@ -193,12 +208,21 @@ textarea {
     line-height: 1.5;
 }
 
+.mode-select,
+.search-input,
+textarea,
+input[type="text"],
+input[type="number"]:hover {
+    border-color: hsl(0, 0%, 70%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
 textarea:focus,
 input:focus,
 .mode-select:focus {
     outline: none;
-    border-color: var(--pintura-accent);
-    background: var(--bg-main);
+    border-color: hsl(210, 100%, 60%);
+    box-shadow: 0 0 0 3px hsla(210, 100%, 60%, 0.2), 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 /* Model Selection */
@@ -251,15 +275,18 @@ input:focus,
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 8px 12px;
     background: var(--input-bg);
     border: 1px solid var(--input-border);
-    border-radius: 4px;
-    transition: background 0.15s;
+    border-radius: 8px;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .model-list-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: hsl(0, 0%, 98%);
+    border-color: hsl(0, 0%, 70%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .model-checkbox {
@@ -312,18 +339,19 @@ input:focus,
     padding: 8px 12px;
     background: var(--input-bg);
     border: 1px dashed var(--input-border);
-    border-radius: 4px;
+    border-radius: 8px;
     color: var(--text-secondary);
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
-    transition: all 0.15s;
+    transition: all 0.15s ease-out;
 }
 
 .add-model-btn:hover {
     border-color: var(--pintura-accent);
     color: var(--pintura-accent);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(75, 85, 99, 0.05);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .add-model-btn span {
@@ -387,11 +415,11 @@ input:focus,
 .video-upload-area,
 .multi-image-upload-area {
     border: 1px dashed var(--border-color);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 24px 16px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.15s ease-out;
     background: var(--input-bg);
 }
 
@@ -399,7 +427,8 @@ input:focus,
 .video-upload-area:hover,
 .multi-image-upload-area:hover {
     border-color: var(--pintura-accent);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(75, 85, 99, 0.05);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .upload-placeholder {
@@ -488,7 +517,7 @@ input:focus,
 
 .multi-image-add:hover {
     border-color: var(--pintura-accent);
-    background: rgba(99, 102, 241, 0.05);
+    background: rgba(75, 85, 99, 0.05);
 }
 
 .multi-image-add svg {
@@ -604,28 +633,33 @@ input:focus,
 
 .duration-btn,
 .ratio-btn {
-    padding: 6px 12px;
+    padding: 8px 14px;
     background: var(--input-bg);
     border: 1px solid var(--input-border);
-    border-radius: 3px;
+    border-radius: 8px;
     color: var(--text-primary);
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
-    transition: all 0.15s;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .duration-btn:hover,
 .ratio-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--pintura-accent);
+    background: hsl(0, 0%, 98%);
+    border-color: hsl(0, 0%, 70%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .duration-btn.active,
 .ratio-btn.active {
     background: var(--pintura-accent);
-    color: white;
-    border-color: var(--pintura-accent);
+    backdrop-filter: var(--backdrop-filter-dark);
+    -webkit-backdrop-filter: var(--backdrop-filter-dark);
+    color: var(--pintura-accent-text);
+    border-color: transparent;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .aspect-ratio-grid {
@@ -641,38 +675,56 @@ button {
 }
 
 .secondary-btn {
-    padding: 6px 14px;
+    padding: 8px 16px;
     background: var(--input-bg);
     border: 1px solid var(--input-border);
-    border-radius: 3px;
+    border-radius: 8px;
     color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.15s ease-out;
     font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .secondary-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    border-color: hsl(0, 0%, 70%);
+    background-color: hsl(0, 0%, 98%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.secondary-btn:active {
+    background-color: hsl(0, 0%, 95%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .primary-btn {
     padding: 8px 20px;
     background: var(--pintura-accent);
+    backdrop-filter: var(--backdrop-filter-dark);
+    -webkit-backdrop-filter: var(--backdrop-filter-dark);
     border: none;
-    border-radius: 3px;
-    color: white;
+    border-radius: var(--border-radius);
+    color: var(--pintura-accent-text);
     cursor: pointer;
     font-weight: 600;
-    transition: background 0.15s;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .primary-btn:hover {
     background: var(--pintura-accent-hover);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.primary-btn:active {
+    background: var(--color-foreground-20);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .primary-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
 }
 
 /* Cost Estimate */
@@ -694,25 +746,38 @@ button {
 .run-btn {
     padding: 12px 28px;
     background: var(--pintura-accent);
+    backdrop-filter: var(--backdrop-filter-dark);
+    -webkit-backdrop-filter: var(--backdrop-filter-dark);
     border: none;
-    border-radius: 4px;
-    color: white;
+    border-radius: var(--border-radius);
+    color: var(--pintura-accent-text);
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: background 0.15s;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .run-btn:hover {
     background: var(--pintura-accent-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.run-btn:active {
+    transform: translateY(0);
+    background: var(--color-foreground-20);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .run-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
 }
 
 .run-btn kbd {
@@ -742,15 +807,17 @@ button {
 }
 
 .result-card {
-    background: var(--bg-sidebar);
-    border-radius: 4px;
+    background: white;
+    border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--border-color);
-    transition: transform 0.15s;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .result-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .result-card-loading {
@@ -887,7 +954,7 @@ button {
 }
 
 .history-item .status.processing {
-    background: rgba(99, 102, 241, 0.15);
+    background: rgba(75, 85, 99, 0.15);
     color: var(--pintura-accent);
 }
 
@@ -956,7 +1023,7 @@ button {
 
 .model-set-card.selected {
     border-color: var(--pintura-accent);
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(75, 85, 99, 0.1);
 }
 
 .model-set-card .set-name {
@@ -1012,11 +1079,11 @@ button {
 /* Queue Status */
 .queue-status {
     padding: 10px;
-    background: rgba(99, 102, 241, 0.1);
-    border-radius: 4px;
+    background: rgba(75, 85, 99, 0.1);
+    border-radius: 8px;
     margin: 12px 0;
     font-size: 12px;
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    border: 1px solid rgba(75, 85, 99, 0.3);
 }
 
 .queue-status .position {

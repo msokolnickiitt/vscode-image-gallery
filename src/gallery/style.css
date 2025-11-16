@@ -5,11 +5,11 @@
 html {
 	scroll-behavior: smooth;
 	overflow-y: scroll;
-	background-color: hsl(0, 0%, 97%);
+	background-color: #ffffff;
 }
 
 body {
-	color: hsl(0, 0%, 20%);
+	color: #1f2937;
 }
 
 .grid {
@@ -114,15 +114,15 @@ video.image {
 	padding: 15px;
 	display: flex;
 	width: 100%;
-	background-color: hsl(0, 0%, 92%);
-	color: hsl(0, 0%, 20%);
+	background-color: #fafafa;
+	color: #1f2937;
 	border: 0;
-	border-radius: 6px;
+	border-radius: 8px;
 }
 
 .folder:hover {
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	background-color: hsl(0, 0%, 90%);
+	background-color: #f3f4f6;
 }
 
 .folder-title {
@@ -151,8 +151,8 @@ video.image {
 	padding: 15px;
 	display: flex;
 	flex-grow: 1;
-	background-color: hsl(0, 0%, 92%);
-	border-bottom: 1px solid hsl(0, 0%, 85%);
+	background-color: #fafafa;
+	border-bottom: 1px solid #e5e7eb;
 }
 
 .toolbar-item {
@@ -165,12 +165,14 @@ video.image {
 	padding: 3px;
 	border: 0;
 	background-color: transparent;
-	color: hsl(0, 0%, 40%);
+	color: #1f2937;
 }
 
 .codicon:hover {
-	background-color: hsl(0, 0%, 88%);
-	border-radius: 5px;
+	background-color: rgba(0, 0, 0, 0.1);
+	backdrop-filter: brightness(90%) saturate(180%) blur(10px);
+	-webkit-backdrop-filter: brightness(90%) saturate(180%) blur(10px);
+	border-radius: 0.625em;
 }
 
 .filter-controls {
@@ -209,8 +211,8 @@ video.image {
 
 .filter-input:focus {
 	outline: none;
-	border-color: hsl(210, 100%, 60%);
-	box-shadow: 0 0 0 3px hsla(210, 100%, 60%, 0.2), 0 2px 6px rgba(0, 0, 0, 0.12);
+	border-color: #4b5563;
+	box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.2), 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .clear-filters {
@@ -218,24 +220,24 @@ video.image {
 	padding: 8px 16px;
 	font-size: 14px;
 	cursor: pointer;
-	background-color: white;
-	color: hsl(0, 0%, 40%);
-	border: 1px solid hsl(0, 0%, 85%);
-	border-radius: 8px;
+	background-color: rgba(0, 0, 0, 0.1);
+	backdrop-filter: brightness(90%) saturate(180%) blur(10px);
+	-webkit-backdrop-filter: brightness(90%) saturate(180%) blur(10px);
+	color: #1f2937;
+	border: none;
+	border-radius: 0.625em;
 	transition: all 0.15s ease-out;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .clear-filters:hover {
-	border-color: hsl(0, 0%, 70%);
-	background-color: hsl(0, 0%, 98%);
-	color: hsl(0, 0%, 20%);
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+	background-color: rgba(0, 0, 0, 0.15);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .clear-filters:active {
-	background-color: hsl(0, 0%, 95%);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+	background-color: rgba(0, 0, 0, 0.2);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .sort-options {
@@ -279,8 +281,8 @@ video.image {
 
 .dropdown:focus {
 	outline: none;
-	border-color: hsl(210, 100%, 60%);
-	box-shadow: 0 0 0 3px hsla(210, 100%, 60%, 0.2), 0 2px 6px rgba(0, 0, 0, 0.12);
+	border-color: #4b5563;
+	box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.2), 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .dropdown:active {
@@ -295,8 +297,8 @@ select option {
 }
 
 select option:hover {
-	background-color: hsl(210, 100%, 95%);
-	color: hsl(210, 100%, 40%);
+	background-color: hsl(0, 0%, 95%);
+	color: hsl(0, 0%, 30%);
 }
 
 /* Context Menu */
@@ -322,6 +324,6 @@ select option:hover {
 }
 
 .context-menu-item:hover {
-	background-color: hsl(210, 100%, 95%);
-	color: hsl(210, 100%, 40%);
+	background-color: hsl(0, 0%, 95%);
+	color: hsl(0, 0%, 20%);
 }
