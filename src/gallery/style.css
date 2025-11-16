@@ -5,6 +5,11 @@
 html {
 	scroll-behavior: smooth;
 	overflow-y: scroll;
+	background-color: hsl(0, 0%, 97%);
+}
+
+body {
+	color: hsl(0, 0%, 20%);
 }
 
 .grid {
@@ -40,12 +45,14 @@ html {
 	opacity: 0;
 	transition: 0s opacity;
 	width: 100%;
-	background-color: black;
-	color: #fff;
+	background-color: hsl(0, 0%, 95%);
+	color: hsl(0, 0%, 20%);
 	text-align: left;
 	padding: 10px;
 	border-radius: 6px;
 	white-space: pre;
+	border: 1px solid hsl(0, 0%, 85%);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .tooltip:hover .tooltip-text {
@@ -57,14 +64,15 @@ html {
 button.codicon+.tooltip-text {
 	width: auto;
 	transform: translate(5rem, 1.8rem);
-	background-color: hsl(240, 1%, 14%);
+	background-color: hsl(0, 0%, 95%);
 	padding: 6px;
-	border-radius: 0px;
-	border: 2px solid white;
+	border-radius: 3px;
+	border: 1px solid hsl(0, 0%, 85%);
 }
 
 .image-container:hover {
-	box-shadow: 0 0 10px white;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+	transform: translate3d(0, -2px, 1px);
 }
 
 .image {
@@ -106,13 +114,15 @@ video.image {
 	padding: 15px;
 	display: flex;
 	width: 100%;
-	background-color: hsl(0, 0%, 17%);
-	color: white;
+	background-color: hsl(0, 0%, 92%);
+	color: hsl(0, 0%, 20%);
 	border: 0;
+	border-radius: 6px;
 }
 
 .folder:hover {
-	box-shadow: 0 0px 10px hsl(60, 65%, 90%);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	background-color: hsl(0, 0%, 90%);
 }
 
 .folder-title {
@@ -130,7 +140,7 @@ video.image {
 	flex-grow: 1;
 	justify-content: right;
 	align-items: center;
-	color: white;
+	color: hsl(0, 0%, 40%);
 	font-family: arial;
 }
 
@@ -141,7 +151,8 @@ video.image {
 	padding: 15px;
 	display: flex;
 	flex-grow: 1;
-	background-color: hsl(0, 0%, 17%);
+	background-color: hsl(0, 0%, 92%);
+	border-bottom: 1px solid hsl(0, 0%, 85%);
 }
 
 .toolbar-item {
@@ -153,12 +164,12 @@ video.image {
 .codicon {
 	padding: 3px;
 	border: 0;
-	background-color: hsl(0, 0%, 17%);
-	color: white;
+	background-color: transparent;
+	color: hsl(0, 0%, 40%);
 }
 
 .codicon:hover {
-	background-color: hsl(180, 0%, 21%);
+	background-color: hsl(0, 0%, 88%);
 	border-radius: 5px;
 }
 
@@ -177,20 +188,21 @@ video.image {
 .filter-input {
 	padding: 6px 10px;
 	margin-right: 10px;
-	background-color: hsl(0, 0%, 23%);
-	color: white;
-	border: 1px solid hsl(0, 0%, 30%);
+	background-color: white;
+	color: hsl(0, 0%, 20%);
+	border: 1px solid hsl(0, 0%, 85%);
 	border-radius: 3px;
 	min-width: 200px;
 }
 
 .filter-input::placeholder {
-	color: hsl(0, 0%, 50%);
+	color: hsl(0, 0%, 60%);
 }
 
 .filter-input:focus {
 	outline: none;
-	border-color: hsl(210, 100%, 50%);
+	border-color: hsl(210, 100%, 60%);
+	box-shadow: 0 0 0 2px hsla(210, 100%, 60%, 0.2);
 }
 
 .clear-filters {
@@ -217,18 +229,25 @@ video.image {
 
 .dropdown {
 	padding: 6px;
-	background-color: hsl(0, 0%, 23%);
-	color: white;
-	border-width: 0px;
+	background-color: white;
+	color: hsl(0, 0%, 20%);
+	border: 1px solid hsl(0, 0%, 85%);
+	border-radius: 3px;
 }
 
 .dropdown:checked {
-	border-width: 0px;
+	border-width: 1px;
+}
+
+.dropdown:focus {
+	outline: none;
+	border-color: hsl(210, 100%, 60%);
+	box-shadow: 0 0 0 2px hsla(210, 100%, 60%, 0.2);
 }
 
 select option {
-	background-color: hsl(0, 0%, 23%);
-	color: white;
+	background-color: white;
+	color: hsl(0, 0%, 20%);
 	border-radius: 0px;
 }
 
@@ -237,17 +256,17 @@ select option {
 	position: fixed;
 	z-index: 10000;
 	display: none;
-	background-color: hsl(0, 0%, 17%);
-	border: 1px solid hsl(0, 0%, 30%);
-	border-radius: 3px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+	background-color: white;
+	border: 1px solid hsl(0, 0%, 85%);
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	padding: 4px 0;
 	min-width: 150px;
 }
 
 .context-menu-item {
 	padding: 8px 20px;
-	color: white;
+	color: hsl(0, 0%, 20%);
 	cursor: pointer;
 	font-size: 13px;
 	display: flex;
@@ -255,5 +274,6 @@ select option {
 }
 
 .context-menu-item:hover {
-	background-color: hsl(210, 100%, 50%);
+	background-color: hsl(210, 100%, 95%);
+	color: hsl(210, 100%, 40%);
 }
