@@ -162,6 +162,44 @@ video.image {
 	border-radius: 5px;
 }
 
+.filter-controls {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-left: 30px;
+}
+
+.filter-controls span {
+	font-size: 15px;
+	margin-right: 10px;
+}
+
+.filter-input {
+	padding: 6px 10px;
+	margin-right: 10px;
+	background-color: hsl(0, 0%, 23%);
+	color: white;
+	border: 1px solid hsl(0, 0%, 30%);
+	border-radius: 3px;
+	min-width: 200px;
+}
+
+.filter-input::placeholder {
+	color: hsl(0, 0%, 50%);
+}
+
+.filter-input:focus {
+	outline: none;
+	border-color: hsl(210, 100%, 50%);
+}
+
+.clear-filters {
+	margin-left: 10px;
+	padding: 6px 12px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
 .sort-options {
 	display: flex;
 	align-items: center;
