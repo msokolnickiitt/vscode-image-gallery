@@ -73,6 +73,16 @@ export default class HTMLProvider {
 					<img src="${this.codicons["collapseAll"]}" alt="Collapse All"/>
 				</button>
 			</div>
+			<div class="filter-controls">
+				<span>Filter:</span>
+				<input type="text" id="filter-name" class="filter-input" placeholder="Search by name..." />
+				<select id="filter-type" class="dropdown">
+					<option value="all">All</option>
+					<option value="image">Images</option>
+					<option value="video">Videos</option>
+				</select>
+				<button id="clear-filters" class="codicon clear-filters">Clear</button>
+			</div>
 			<div class="sort-options">
 				<span>Sort by</span>
 				<select id="dropdown-sort" class="dropdown">
@@ -86,9 +96,9 @@ export default class HTMLProvider {
 					<button class="sort-order-arrow codicon">
 						<img
 							class="sort-order-arrow-img"
-							src="${this.codicons["arrowUp"]}" 
-							data-arrow-up="${this.codicons["arrowUp"]}" 
-							data-arrow-down="${this.codicons["arrowDown"]}" 
+							src="${this.codicons["arrowUp"]}"
+							data-arrow-up="${this.codicons["arrowUp"]}"
+							data-arrow-down="${this.codicons["arrowDown"]}"
 							alt="Sort Order"
 						/>
 					</button>

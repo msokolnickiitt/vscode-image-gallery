@@ -165,6 +165,87 @@ class DOMManager {
 		if (content.childElementCount === 0) {
 			content.innerHTML = "<p>No media found in this folder.</p>";
 		}
+
+		// Apply filters after updating content
+		FilterManager.applyFilters();
+	}
+}
+
+class FilterManager {
+	static filterState = {
+		nameText: "",
+		mediaType: "all" // "all", "image", "video"
+	};
+
+	static applyFilters() {
+		const nameFilter = FilterManager.filterState.nameText.toLowerCase();
+		const typeFilter = FilterManager.filterState.mediaType;
+
+		for (const folder of Object.values(gFolders)) {
+			let visibleImagesCount = 0;
+
+			for (const image of Object.values(folder.images)) {
+				const container = image.container;
+				const mediaElement = container.querySelector(`#${image.id}`);
+				const filename = container.querySelector(`#${image.id}-filename`).textContent;
+				const mediaType = mediaElement.dataset.meta ? JSON.parse(mediaElement.dataset.meta).type : "image";
+
+				// Check name filter
+				const matchesName = nameFilter === "" || filename.toLowerCase().includes(nameFilter);
+
+				// Check type filter
+				const matchesType = typeFilter === "all" || mediaType === typeFilter;
+
+				// Show/hide based on filters
+				if (matchesName && matchesType) {
+					container.style.display = "";
+					visibleImagesCount++;
+				} else {
+					container.style.display = "none";
+				}
+			}
+
+			// Show/hide folder based on whether it has visible images
+			if (visibleImagesCount > 0) {
+				folder.bar.style.display = "";
+				folder.grid.style.display = folder.bar.dataset.state === "collapsed" ? "none" : "grid";
+
+				// Update folder item count
+				const itemCountElement = folder.bar.querySelector(`#${folder.id}-items-count`);
+				const totalImages = Object.keys(folder.images).length;
+				if (nameFilter !== "" || typeFilter !== "all") {
+					itemCountElement.textContent = `${visibleImagesCount} of ${totalImages} item${totalImages === 1 ? "" : "s"} found`;
+				} else {
+					itemCountElement.textContent = `${totalImages} item${totalImages === 1 ? "" : "s"} found`;
+				}
+			} else {
+				folder.bar.style.display = "none";
+				folder.grid.style.display = "none";
+			}
+		}
+
+		// Update toolbar folder count
+		const visibleFolders = Object.values(gFolders).filter(folder => {
+			return folder.bar.style.display !== "none";
+		}).length;
+		const totalFolders = Object.keys(gFolders).length;
+		const folderCountElement = document.querySelector('.toolbar .folder-count');
+		if (nameFilter !== "" || typeFilter !== "all") {
+			folderCountElement.textContent = `${visibleFolders} of ${totalFolders} folder${totalFolders === 1 ? "" : "s"} found`;
+		} else {
+			folderCountElement.textContent = `${totalFolders} folder${totalFolders === 1 ? "" : "s"} found`;
+		}
+	}
+
+	static clearFilters() {
+		FilterManager.filterState.nameText = "";
+		FilterManager.filterState.mediaType = "all";
+
+		// Reset UI controls
+		document.getElementById("filter-name").value = "";
+		document.getElementById("filter-type").value = "all";
+
+		FilterManager.applyFilters();
 	}
 }
 
@@ -184,6 +265,23 @@ class EventListener {
 				EventListener.toggleSortOrder();
 				EventListener.sortRequest();
 			}
+		);
+
+		// Filter controls event listeners
+		document.getElementById("filter-name").addEventListener(
+			"input", (event) => {
+				FilterManager.filterState.nameText = event.target.value;
+				FilterManager.applyFilters();
+			}
+		);
+		document.getElementById("filter-type").addEventListener(
+			"change", (event) => {
+				FilterManager.filterState.mediaType = event.target.value;
+				FilterManager.applyFilters();
+			}
+		);
+		document.getElementById("clear-filters").addEventListener(
+			"click", () => FilterManager.clearFilters()
 		);
 	}
 
